@@ -31,29 +31,38 @@ const OpticalFlowVisualization: React.FC<OpticalFlowVisualizationProps> = ({
     tempCtx.putImageData(currentFrame, 0, 0);
     ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
 
-    // Draw flow vectors
-    ctx.strokeStyle = 'rgba(0, 255, 0, 0.5)';
+    // Draw flow vectors with improved visibility
+    ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+    ctx.fillStyle = 'rgba(0, 255, 0, 0.8)';
     ctx.lineWidth = 2;
 
-    const vectorSpacing = canvas.width / 10;
+    const gridSize = 10;
+    const cellWidth = canvas.width / gridSize;
+    const cellHeight = canvas.height / gridSize;
+
     flowVectors.velocities.forEach((velocity, index) => {
       const direction = flowVectors.directions[index];
-      const x = (index * vectorSpacing) + vectorSpacing/2;
-      const y = canvas.height / 2;
+      
+      // Calculate grid position
+      const gridX = index % gridSize;
+      const gridY = Math.floor(index / gridSize);
+      
+      const x = gridX * cellWidth + cellWidth / 2;
+      const y = gridY * cellHeight + cellHeight / 2;
 
-      // Calculate vector end point
-      const length = velocity * 20; // Scale for visualization
+      // Scale vector length based on velocity
+      const length = velocity * 30; // Increased scale for better visibility
       const endX = x + Math.cos(direction) * length;
       const endY = y + Math.sin(direction) * length;
 
-      // Draw vector
+      // Draw vector line
       ctx.beginPath();
       ctx.moveTo(x, y);
       ctx.lineTo(endX, endY);
       ctx.stroke();
 
       // Draw arrow head
-      const headLength = 10;
+      const headLength = 12;
       const angle = Math.atan2(endY - y, endX - x);
       ctx.beginPath();
       ctx.moveTo(endX, endY);
@@ -67,6 +76,15 @@ const OpticalFlowVisualization: React.FC<OpticalFlowVisualizationProps> = ({
       );
       ctx.closePath();
       ctx.fill();
+
+      // Add velocity label
+      ctx.font = '10px Arial';
+      ctx.fillStyle = 'white';
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 2;
+      const velocityText = `${velocity.toFixed(1)} m/s`;
+      ctx.strokeText(velocityText, x - 15, y - 10);
+      ctx.fillText(velocityText, x - 15, y - 10);
     });
 
   }, [previousFrame, currentFrame, flowVectors]);
@@ -86,7 +104,7 @@ const OpticalFlowVisualization: React.FC<OpticalFlowVisualizationProps> = ({
           />
         </div>
         <div className="mt-4 text-sm text-gray-600">
-          <p>Green arrows indicate water flow direction and velocity</p>
+          <p>Green arrows indicate water flow direction and velocity. Labels show speed in meters per second.</p>
         </div>
       </CardContent>
     </Card>

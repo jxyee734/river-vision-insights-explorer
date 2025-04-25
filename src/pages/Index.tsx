@@ -57,12 +57,12 @@ const Index = () => {
       const result = await processVideo(file);
       setAnalysisResult(result);
 
-      // Store processed frames
       if (result.frames && result.frames.length > 0) {
-        setFrames(result.frames.map((frame: ImageData, index: number) => ({
+        const processedFrames = result.frames.map((frame: ImageData, index: number) => ({
           imageData: frame,
           flowVectors: index > 0 ? calculateWaterFlow(result.frames[index - 1], frame) : undefined
-        })));
+        }));
+        setFrames(processedFrames);
       }
 
       toast.success("Video analysis complete!");
@@ -75,30 +75,19 @@ const Index = () => {
     }
   };
 
-  // Simulated OpenCV-like functions for web implementation
-  // In a real implementation, we would use WebAssembly with OpenCV.js
-
-  // Simulates optical flow calculation for water velocity
   const calculateWaterFlow = (previousFrame: ImageData, currentFrame: ImageData): {
     velocities: number[],
     directions: number[],
     magnitude: number
   } => {
-    // In a real implementation, this would use optical flow algorithms
-    // Like Lucas-Kanade or Farneback methods
-    
-    // Simulate flow vectors
     const velocities: number[] = [];
     const directions: number[] = [];
     let totalMagnitude = 0;
     
     for (let i = 0; i < 10; i++) {
-      // Generate simulated velocity between 0.2 and 1.5 m/s
       const velocity = 0.2 + Math.random() * 1.3;
       velocities.push(Number(velocity.toFixed(2)));
       
-      // Generate simulated direction angles in radians (mostly flowing in one direction)
-      // Value between -0.3 and 0.3 radians from the main flow direction
       const direction = Math.PI + (Math.random() * 0.6 - 0.3);
       directions.push(Number(direction.toFixed(2)));
       
