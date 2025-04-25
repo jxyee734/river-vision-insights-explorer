@@ -150,19 +150,24 @@ export const processVideo = async (videoFile: File): Promise<{
   trashCount: number,
   frames: number
 }> => {
+  let currentStage = 0;
+  if (window.updateProcessingStage) {
+    window.updateProcessingStage(currentStage);
+  }
+
   // Extract frames for processing
   const frames = await extractFrames(videoFile, 10);
+  currentStage = 1;
+  if (window.updateProcessingStage) {
+    window.updateProcessingStage(currentStage);
+  }
   
   // Process frames to get depth information
   const depthMeasurements = frames.map(frame => calculateRiverDepth(frame));
-  
-  // Flatten and calculate statistics
-  const allDepths = depthMeasurements.flat();
-  const averageDepth = Number((allDepths.reduce((a, b) => a + b, 0) / allDepths.length).toFixed(2));
-  const maxDepth = Number(Math.max(...allDepths).toFixed(2));
-  
-  // Get representative depth profile from middle frame
-  const depthProfile = depthMeasurements[Math.floor(frames.length / 2)];
+  currentStage = 2;
+  if (window.updateProcessingStage) {
+    window.updateProcessingStage(currentStage);
+  }
   
   // Calculate flow information between consecutive frames
   let totalVelocity = 0;
@@ -176,6 +181,11 @@ export const processVideo = async (videoFile: File): Promise<{
     flowCalcs++;
   }
   
+  currentStage = 3;
+  if (window.updateProcessingStage) {
+    window.updateProcessingStage(currentStage);
+  }
+
   const averageVelocity = Number((totalVelocity / flowCalcs).toFixed(2));
   const flowMagnitude = Number((totalMagnitude / flowCalcs).toFixed(2));
   
@@ -183,10 +193,15 @@ export const processVideo = async (videoFile: File): Promise<{
   const trashDetections = frames.map(frame => detectTrash(frame));
   const trashCount = trashDetections.reduce((total, detection) => total + detection.count, 0);
   
+  // All processing complete
+  if (window.updateProcessingStage) {
+    window.updateProcessingStage(4);
+  }
+
   return {
-    averageDepth,
-    maxDepth,
-    depthProfile,
+    averageDepth: Number((depthMeasurements.flat().reduce((a, b) => a + b, 0) / depthMeasurements.flat().length).toFixed(2)),
+    maxDepth: Number(Math.max(...depthMeasurements.flat()).toFixed(2)),
+    depthProfile: depthMeasurements[Math.floor(depthMeasurements.length / 2)],
     averageVelocity,
     flowMagnitude,
     trashCount,

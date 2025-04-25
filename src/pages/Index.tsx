@@ -1,10 +1,10 @@
-
 import React, { useState } from 'react';
 import { toast } from "sonner";
 import UploadSection from '@/components/UploadSection';
 import DepthVisualization from '@/components/DepthVisualization';
 import FlowAnalysis from '@/components/FlowAnalysis';
 import TrashDetection from '@/components/TrashDetection';
+import ProcessingVisualization from '@/components/ProcessingVisualization';
 import { processVideo } from '@/utils/videoProcessing';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowDownWideNarrow, CloudLightning, FileVideo } from "lucide-react";
@@ -19,20 +19,31 @@ interface AnalysisResult {
   frames: number;
 }
 
+declare global {
+  interface Window {
+    updateProcessingStage: (stage: number) => void;
+  }
+}
+
 const Index = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [activeTab, setActiveTab] = useState('depth');
+  const [processingStage, setProcessingStage] = useState(0);
 
   const handleVideoUpload = async (file: File) => {
     try {
       setIsProcessing(true);
+      setProcessingStage(0);
+      
+      window.updateProcessingStage = (stage: number) => {
+        setProcessingStage(stage);
+      };
+      
       toast.info("Processing video, please wait...");
       
-      // Process the video and get analysis results
       const result = await processVideo(file);
       
-      // Update state with results
       setAnalysisResult(result);
       toast.success("Video analysis complete!");
     } catch (error) {
@@ -40,6 +51,7 @@ const Index = () => {
       toast.error("Error processing video. Please try again.");
     } finally {
       setIsProcessing(false);
+      delete window.updateProcessingStage;
     }
   };
 
@@ -64,6 +76,12 @@ const Index = () => {
               onVideoUploaded={handleVideoUpload} 
               isProcessing={isProcessing} 
             />
+
+            {isProcessing && (
+              <div className="mt-6">
+                <ProcessingVisualization currentStage={processingStage} />
+              </div>
+            )}
 
             {analysisResult && (
               <div className="mt-6 bg-white rounded-lg shadow p-4">
