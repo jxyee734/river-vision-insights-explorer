@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { toast } from "sonner";
 import UploadSection from '@/components/UploadSection';
@@ -138,7 +139,7 @@ const Index = () => {
                 <div className="text-sm space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-500">Frames Analyzed:</span>
-                    <span className="font-medium">{analysisResult.frames}</span>
+                    <span className="font-medium">{frames.length}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-500">Average Depth:</span>
