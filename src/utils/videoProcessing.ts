@@ -1,4 +1,3 @@
-
 // Simulated OpenCV-like functions for web implementation
 // In a real implementation, we would use WebAssembly with OpenCV.js
 
@@ -148,7 +147,7 @@ export const processVideo = async (videoFile: File): Promise<{
   averageVelocity: number,
   flowMagnitude: number,
   trashCount: number,
-  frames: number
+  frames: ImageData[]
 }> => {
   let currentStage = 0;
   if (window.updateProcessingStage) {
@@ -157,17 +156,9 @@ export const processVideo = async (videoFile: File): Promise<{
 
   // Extract frames for processing
   const frames = await extractFrames(videoFile, 10);
-  currentStage = 1;
-  if (window.updateProcessingStage) {
-    window.updateProcessingStage(currentStage);
-  }
   
   // Process frames to get depth information
   const depthMeasurements = frames.map(frame => calculateRiverDepth(frame));
-  currentStage = 2;
-  if (window.updateProcessingStage) {
-    window.updateProcessingStage(currentStage);
-  }
   
   // Calculate flow information between consecutive frames
   let totalVelocity = 0;
@@ -181,11 +172,6 @@ export const processVideo = async (videoFile: File): Promise<{
     flowCalcs++;
   }
   
-  currentStage = 3;
-  if (window.updateProcessingStage) {
-    window.updateProcessingStage(currentStage);
-  }
-
   const averageVelocity = Number((totalVelocity / flowCalcs).toFixed(2));
   const flowMagnitude = Number((totalMagnitude / flowCalcs).toFixed(2));
   
@@ -193,11 +179,6 @@ export const processVideo = async (videoFile: File): Promise<{
   const trashDetections = frames.map(frame => detectTrash(frame));
   const trashCount = trashDetections.reduce((total, detection) => total + detection.count, 0);
   
-  // All processing complete
-  if (window.updateProcessingStage) {
-    window.updateProcessingStage(4);
-  }
-
   return {
     averageDepth: Number((depthMeasurements.flat().reduce((a, b) => a + b, 0) / depthMeasurements.flat().length).toFixed(2)),
     maxDepth: Number(Math.max(...depthMeasurements.flat()).toFixed(2)),
@@ -205,6 +186,6 @@ export const processVideo = async (videoFile: File): Promise<{
     averageVelocity,
     flowMagnitude,
     trashCount,
-    frames: frames.length
+    frames
   };
 };
