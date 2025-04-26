@@ -1,4 +1,3 @@
-
 import { analyzeImage, extractVideoFrame, delay, GeminiResponse } from '../services/geminiService';
 
 export interface AnalysisResult {
@@ -43,6 +42,10 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
     const totalDuration = video.duration;
     const frameInterval = Math.max(1, Math.floor(totalDuration / 5)); // Extract 5 frames max
     
+    let totalTrashCount = 0;
+    let allCategories: Set<string> = new Set();
+    let environmentalAnalysis = '';
+    
     for (let i = 0; i < Math.min(5, totalDuration); i++) {
       // Seek to position
       video.currentTime = i * frameInterval;
@@ -72,17 +75,25 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
         const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         frames.push(frameData);
         
-        // For the middle frame, perform trash analysis with Gemini
-        if (i === Math.floor(Math.min(5, totalDuration) / 2)) {
-          // Update processing stage (2: analyzing trash)
-          if (window.updateProcessingStage) window.updateProcessingStage(2);
-          
-          trashAnalysis = await analyzeImage(frameBase64, 
-            "Analyze this river image and identify any trash or pollution. Provide: 1) The count of visible trash items, 2) Categories of trash (plastic, metal, etc.), 3) Brief environmental impact assessment. Format response as JSON with fields: count, categories (array), and analysis (text)."
-          );
+        // For each frame, perform trash analysis with Gemini
+        // Update processing stage (2: analyzing trash)
+        if (window.updateProcessingStage) window.updateProcessingStage(2);
+        
+        const trashAnalysis = await analyzeImage(frameBase64, 
+          "Analyze this river frame and identify any trash or pollution. Return a JSON with: count (number of trash items), categories (array of types like 'plastic', 'metal'), and analysis (brief environmental impact). Be accurate and conservative in counting."
+        );
+        
+        if (trashAnalysis) {
+          totalTrashCount += trashAnalysis.count || 0;
+          if (trashAnalysis.categories) {
+            trashAnalysis.categories.forEach(cat => allCategories.add(cat));
+          }
+          if (trashAnalysis.analysis && !environmentalAnalysis) {
+            environmentalAnalysis = trashAnalysis.analysis;
+          }
         }
         
-        // Estimate depth profile based on image analysis (simulation with real image processing)
+        // Estimate depth profile based on image analysis
         const depthEstimate = estimateDepthFromImage(frameData);
         depthProfile.push(...depthEstimate);
       }
@@ -101,16 +112,16 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
     video.pause();
     URL.revokeObjectURL(video.src);
     
-    // Return analysis results
+    // Return analysis results with enhanced trash detection
     return {
       averageDepth: calculateAverage(depthProfile),
       maxDepth: Math.max(...depthProfile),
       depthProfile,
       averageVelocity: flowMetrics.averageVelocity,
       flowMagnitude: flowMetrics.flowMagnitude,
-      trashCount: trashAnalysis?.count || 0,
-      trashCategories: trashAnalysis?.categories,
-      environmentalImpact: trashAnalysis?.analysis,
+      trashCount: totalTrashCount,
+      trashCategories: Array.from(allCategories),
+      environmentalImpact: environmentalAnalysis,
       frames
     };
   } catch (error) {
