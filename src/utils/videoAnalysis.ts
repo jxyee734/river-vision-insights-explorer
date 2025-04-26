@@ -16,55 +16,48 @@ export interface AnalysisResult {
  * Process a video file and analyze its content using real algorithms and Gemini API
  */
 export async function analyzeVideo(file: File): Promise<AnalysisResult> {
-  // Create a video element to process the file
   const video = document.createElement('video');
   video.src = URL.createObjectURL(file);
   video.muted = true;
   
-  // Wait for video metadata to load
   await new Promise<void>((resolve) => {
     video.onloadedmetadata = () => resolve();
   });
   
-  // Set up variables for analysis
   const frames: ImageData[] = [];
   let trashAnalysis: GeminiResponse | null = null;
   let depthProfile: number[] = [];
   
-  // Start video playback
   try {
     await video.play();
     
-    // Update processing stage (0: starting)
     if (window.updateProcessingStage) window.updateProcessingStage(0);
     
-    // Extract frames at regular intervals
+    // Process every frame at 1-second intervals
     const totalDuration = video.duration;
-    const frameInterval = Math.max(1, Math.floor(totalDuration / 5)); // Extract 5 frames max
+    const frameInterval = 1; // 1 second interval
     
     let totalTrashCount = 0;
     let allCategories: Set<string> = new Set();
     let environmentalAnalysis = '';
     
-    for (let i = 0; i < Math.min(5, totalDuration); i++) {
+    for (let currentTime = 0; currentTime < totalDuration; currentTime += frameInterval) {
       // Seek to position
-      video.currentTime = i * frameInterval;
-      await delay(500); // Wait for seek to complete
+      video.currentTime = currentTime;
+      await delay(100); // Reduced delay for faster processing
       
-      // Update processing stage (1: extracting frames)
       if (window.updateProcessingStage) window.updateProcessingStage(1);
       
       // Extract frame
       const frameBase64 = extractVideoFrame(video);
       
-      // Create a temporary image to convert base64 to ImageData
+      // Create a temporary image
       const img = new Image();
       img.src = frameBase64;
       await new Promise<void>((resolve) => {
         img.onload = () => resolve();
       });
       
-      // Create canvas to get ImageData
       const canvas = document.createElement('canvas');
       canvas.width = img.width;
       canvas.height = img.height;
@@ -75,8 +68,7 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
         const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         frames.push(frameData);
         
-        // For each frame, perform trash analysis with Gemini
-        // Update processing stage (2: analyzing trash)
+        // Analyze each frame for trash
         if (window.updateProcessingStage) window.updateProcessingStage(2);
         
         const trashAnalysis = await analyzeImage(frameBase64, 
@@ -93,26 +85,20 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
           }
         }
         
-        // Estimate depth profile based on image analysis
         const depthEstimate = estimateDepthFromImage(frameData);
         depthProfile.push(...depthEstimate);
       }
     }
     
-    // Update processing stage (3: analyzing flow)
     if (window.updateProcessingStage) window.updateProcessingStage(3);
     
-    // Calculate flow metrics by comparing consecutive frames
     const flowMetrics = calculateFlowMetrics(frames);
     
-    // Update processing stage (4: finalizing)
     if (window.updateProcessingStage) window.updateProcessingStage(4);
     
-    // Clean up
     video.pause();
     URL.revokeObjectURL(video.src);
     
-    // Return analysis results with enhanced trash detection
     return {
       averageDepth: calculateAverage(depthProfile),
       maxDepth: Math.max(...depthProfile),
