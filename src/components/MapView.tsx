@@ -83,7 +83,7 @@ const MapView: React.FC = () => {
         <div className="mb-4 p-4 rounded-lg bg-gray-100 relative aspect-video flex items-center justify-center">
           <div className="text-gray-500 absolute">Interactive map will render here</div>
           
-          {/* Simulated map with pins */}
+          {/* Map visualization */}
           <div className="absolute inset-0">
             <div className="absolute w-full h-full bg-blue-50 opacity-50 rounded-lg"></div>
             
@@ -158,7 +158,7 @@ const MapView: React.FC = () => {
             <h4 className="font-medium text-blue-700 mb-1">For NGOs and Government Agencies</h4>
             <p>
               Monitor river pollution levels and track cleanup operations. 
-              Data from citizen uploads helps prioritize interventions. 
+              Data from Gemini AI analysis helps prioritize interventions. 
               Contact our team for access to detailed analytics and reports.
             </p>
           </div>

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { toast } from "sonner";
 import UploadSection from '@/components/UploadSection';
@@ -7,6 +6,7 @@ import FlowAnalysis from '@/components/FlowAnalysis';
 import TrashDetection from '@/components/TrashDetection';
 import ProcessingVisualization from '@/components/ProcessingVisualization';
 import { processVideo } from '@/utils/videoProcessing';
+import { analyzeVideo } from '@/utils/videoAnalysis';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowDownWideNarrow, CloudLightning, FileVideo, Map as MapIcon } from "lucide-react";
 import OpticalFlowVisualization from '@/components/OpticalFlowVisualization';
@@ -54,9 +54,9 @@ const Index = () => {
         setProcessingStage(stage);
       };
       
-      toast.info("Processing video, please wait...");
+      toast.info("Processing video with Gemini AI, please wait...");
       
-      const result = await processVideo(file);
+      const result = await analyzeVideo(file);
       setAnalysisResult(result);
 
       if (result.frames && result.frames.length > 0) {
@@ -67,7 +67,7 @@ const Index = () => {
         setFrames(processedFrames);
       }
 
-      toast.success("Video analysis complete!");
+      toast.success("Video analysis complete with Gemini AI!");
     } catch (error) {
       console.error("Error processing video:", error);
       toast.error("Error processing video. Please try again.");

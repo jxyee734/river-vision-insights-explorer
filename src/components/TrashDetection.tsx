@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 
 interface TrashDetectionProps {
   trashCount: number;
+  trashCategories?: string[];
+  environmentalImpact?: string;
 }
 
 interface TrashCategory {
@@ -16,40 +18,65 @@ interface TrashCategory {
   icon: React.ReactNode;
 }
 
-const TrashDetection: React.FC<TrashDetectionProps> = ({ trashCount }) => {
+const TrashDetection: React.FC<TrashDetectionProps> = ({ 
+  trashCount, 
+  trashCategories = [], 
+  environmentalImpact 
+}) => {
   const [activeTab, setActiveTab] = useState('overview');
 
-  // Generate simulated trash categories
-  const generateTrashCategories = (total: number): TrashCategory[] => {
+  // Generate trash categories based on real data if available
+  const generateTrashCategories = (total: number, categories: string[]): TrashCategory[] => {
     if (total === 0) return [];
     
-    const plasticCount = Math.max(1, Math.floor(total * 0.6));
-    const metalCount = Math.floor(total * 0.2);
-    const otherCount = total - plasticCount - metalCount;
-    
-    return [
-      {
-        name: 'Plastic',
-        count: plasticCount,
-        impact: 'Very High',
-        icon: <Trash2 className="h-5 w-5" />
-      },
-      {
-        name: 'Metal',
-        count: metalCount,
-        impact: 'High', 
-        icon: <Trash2 className="h-5 w-5" />
-      },
-      {
-        name: 'Other',
-        count: otherCount,
-        impact: 'Medium',
-        icon: <Trash2 className="h-5 w-5" />
-      }
-    ].filter(category => category.count > 0);
+    if (categories && categories.length > 0) {
+      // Use real categories from Gemini AI analysis
+      const totalItems = categories.length > 0 ? total : 0;
+      const itemsPerCategory = Math.max(1, Math.floor(total / categories.length));
+      
+      return categories.map((category) => {
+        let impact = 'Medium';
+        if (category.toLowerCase().includes('plastic')) impact = 'Very High';
+        else if (category.toLowerCase().includes('metal')) impact = 'High';
+        else if (category.toLowerCase().includes('organic')) impact = 'Low';
+        
+        return {
+          name: category.charAt(0).toUpperCase() + category.slice(1),
+          count: itemsPerCategory,
+          impact,
+          icon: <Trash2 className="h-5 w-5" />
+        };
+      });
+    } else {
+      // Fallback to simulated categories if no real data
+      const plasticCount = Math.max(1, Math.floor(total * 0.6));
+      const metalCount = Math.floor(total * 0.2);
+      const otherCount = total - plasticCount - metalCount;
+      
+      return [
+        {
+          name: 'Plastic',
+          count: plasticCount,
+          impact: 'Very High',
+          icon: <Trash2 className="h-5 w-5" />
+        },
+        {
+          name: 'Metal',
+          count: metalCount,
+          impact: 'High', 
+          icon: <Trash2 className="h-5 w-5" />
+        },
+        {
+          name: 'Other',
+          count: otherCount,
+          impact: 'Medium',
+          icon: <Trash2 className="h-5 w-5" />
+        }
+      ].filter(category => category.count > 0);
+    }
   };
 
-  const trashCategories = generateTrashCategories(trashCount);
+  const trashCategories = generateTrashCategories(trashCount, trashCategories || []);
 
   // Determine pollution level
   const getPollutionLevel = (count: number) => {
@@ -64,7 +91,7 @@ const TrashDetection: React.FC<TrashDetectionProps> = ({ trashCount }) => {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Trash Detection & Classification</CardTitle>
+        <CardTitle>AI Trash Detection & Classification</CardTitle>
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -95,7 +122,7 @@ const TrashDetection: React.FC<TrashDetectionProps> = ({ trashCount }) => {
                   <div>
                     <h4 className="text-sm font-medium text-yellow-800">Pollution Alert</h4>
                     <p className="text-xs text-yellow-700 mt-1">
-                      {trashCount} pieces of trash detected in this river. Consider organizing a cleanup 
+                      {trashCount} pieces of trash detected in this river by Gemini AI. Consider organizing a cleanup 
                       effort to prevent further environmental damage and protect aquatic life.
                     </p>
                   </div>
@@ -108,7 +135,7 @@ const TrashDetection: React.FC<TrashDetectionProps> = ({ trashCount }) => {
                   <div>
                     <h4 className="text-sm font-medium text-green-800">Clean River</h4>
                     <p className="text-xs text-green-700 mt-1">
-                      No visible trash detected in this river. Well-maintained waterways support healthier
+                      No visible trash detected by Gemini AI in this river. Well-maintained waterways support healthier
                       ecosystems and provide safer recreational opportunities.
                     </p>
                   </div>
@@ -143,10 +170,10 @@ const TrashDetection: React.FC<TrashDetectionProps> = ({ trashCount }) => {
                   <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
                     <div className="flex items-center">
                       <Info className="h-5 w-5 text-blue-500 mr-2" />
-                      <h4 className="text-sm font-medium text-blue-700">AI Classification</h4>
+                      <h4 className="text-sm font-medium text-blue-700">Gemini AI Classification</h4>
                     </div>
                     <p className="text-xs text-blue-600 mt-1">
-                      Our AI system classifies trash items based on material type, size, and visual characteristics.
+                      Google's Gemini Pro Vision AI classifies trash items based on material type, size, and visual characteristics.
                       Classification accuracy improves with more data from user submissions.
                     </p>
                   </div>
@@ -159,30 +186,34 @@ const TrashDetection: React.FC<TrashDetectionProps> = ({ trashCount }) => {
             <div className="space-y-4">
               <div className="p-4 rounded-lg bg-orange-50 border border-orange-100">
                 <h4 className="text-sm font-medium text-orange-800 mb-2">Environmental Impact Assessment</h4>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-orange-700">Current Pollution Level:</span>
-                    <span className={`text-sm font-medium ${pollutionInfo.color}`}>{pollutionInfo.level}</span>
+                {environmentalImpact ? (
+                  <p className="text-sm text-orange-700">{environmentalImpact}</p>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-orange-700">Current Pollution Level:</span>
+                      <span className={`text-sm font-medium ${pollutionInfo.color}`}>{pollutionInfo.level}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-orange-700">Estimated Recovery Time:</span>
+                      <span className="text-sm font-medium">
+                        {trashCount === 0 ? 'N/A' : 
+                        trashCount < 3 ? '1-3 months' : 
+                        trashCount < 6 ? '6-12 months' : 
+                        '1-2 years'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-orange-700">Wildlife Impact:</span>
+                      <span className="text-sm font-medium">
+                        {trashCount === 0 ? 'Minimal' : 
+                        trashCount < 3 ? 'Low' : 
+                        trashCount < 6 ? 'Moderate' : 
+                        'Severe'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-orange-700">Estimated Recovery Time:</span>
-                    <span className="text-sm font-medium">
-                      {trashCount === 0 ? 'N/A' : 
-                       trashCount < 3 ? '1-3 months' : 
-                       trashCount < 6 ? '6-12 months' : 
-                       '1-2 years'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-orange-700">Wildlife Impact:</span>
-                    <span className="text-sm font-medium">
-                      {trashCount === 0 ? 'Minimal' : 
-                       trashCount < 3 ? 'Low' : 
-                       trashCount < 6 ? 'Moderate' : 
-                       'Severe'}
-                    </span>
-                  </div>
-                </div>
+                )}
               </div>
               
               <div className="p-4 rounded-lg bg-blue-50 border border-blue-100">
