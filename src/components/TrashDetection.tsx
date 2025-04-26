@@ -5,17 +5,17 @@ import { Trash2, AlertTriangle, Info, Check, Filter } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 
-interface TrashDetectionProps {
-  trashCount: number;
-  trashCategories?: string[];
-  environmentalImpact?: string;
-}
-
 interface TrashCategory {
   name: string;
   count: number;
   impact: string;
   icon: React.ReactNode;
+}
+
+interface TrashDetectionProps {
+  trashCount: number;
+  trashCategories?: string[];
+  environmentalImpact?: string;
 }
 
 const TrashDetection: React.FC<TrashDetectionProps> = ({ 
@@ -76,7 +76,7 @@ const TrashDetection: React.FC<TrashDetectionProps> = ({
     }
   };
 
-  const trashCategories = generateTrashCategories(trashCount, trashCategories || []);
+  const categoryItems = generateTrashCategories(trashCount, trashCategories);
 
   // Determine pollution level
   const getPollutionLevel = (count: number) => {
@@ -152,7 +152,7 @@ const TrashDetection: React.FC<TrashDetectionProps> = ({
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {trashCategories.map((category) => (
+                  {categoryItems.map((category) => (
                     <div key={category.name} className="p-3 rounded-lg border flex items-center justify-between">
                       <div className="flex items-center">
                         <div className="p-2 bg-gray-100 rounded-full mr-3">

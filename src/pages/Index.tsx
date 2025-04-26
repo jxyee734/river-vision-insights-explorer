@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { toast } from "sonner";
 import UploadSection from '@/components/UploadSection';
@@ -5,7 +6,6 @@ import DepthVisualization from '@/components/DepthVisualization';
 import FlowAnalysis from '@/components/FlowAnalysis';
 import TrashDetection from '@/components/TrashDetection';
 import ProcessingVisualization from '@/components/ProcessingVisualization';
-import { processVideo } from '@/utils/videoProcessing';
 import { analyzeVideo } from '@/utils/videoAnalysis';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowDownWideNarrow, CloudLightning, FileVideo, Map as MapIcon } from "lucide-react";
