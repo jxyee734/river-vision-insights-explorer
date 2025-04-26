@@ -8,9 +8,10 @@ import TrashDetection from '@/components/TrashDetection';
 import ProcessingVisualization from '@/components/ProcessingVisualization';
 import { processVideo } from '@/utils/videoProcessing';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowDownWideNarrow, CloudLightning, FileVideo } from "lucide-react";
+import { ArrowDownWideNarrow, CloudLightning, FileVideo, Map as MapIcon } from "lucide-react";
 import OpticalFlowVisualization from '@/components/OpticalFlowVisualization';
 import RiverModel3D from '@/components/RiverModel3D';
+import MapView from '@/components/MapView';
 
 interface AnalysisResult {
   averageDepth: number;
@@ -188,6 +189,7 @@ const Index = () => {
                     <TabsTrigger value="trash" className="flex-1">Trash Detection</TabsTrigger>
                     <TabsTrigger value="optical" className="flex-1">Optical Flow</TabsTrigger>
                     <TabsTrigger value="3d" className="flex-1">3D Model</TabsTrigger>
+                    <TabsTrigger value="map" className="flex-1">Map</TabsTrigger>
                   </TabsList>
                   
                   <div className="p-4">
@@ -229,6 +231,10 @@ const Index = () => {
                           flowMagnitude={analysisResult.flowMagnitude}
                         />
                       )}
+                    </TabsContent>
+
+                    <TabsContent value="map">
+                      <MapView />
                     </TabsContent>
                   </div>
                 </Tabs>
