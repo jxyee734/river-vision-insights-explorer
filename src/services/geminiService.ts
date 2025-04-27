@@ -4,7 +4,7 @@
  * Uses direct API calls instead of the SDK to avoid package installation issues
  */
 
-const API_KEY = "AIzaSyCZcp5z56Atw_lBSWv60j5mgXklyzXSwc4";
+const API_KEY = "   /** PUT YOUR API HERE ";
 const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent";
 
 export interface GeminiResponse {
