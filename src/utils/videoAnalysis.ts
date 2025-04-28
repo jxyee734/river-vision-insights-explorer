@@ -1,7 +1,35 @@
-
 import { analyzeImage, extractVideoFrame, delay, GeminiResponse } from '../services/geminiService';
 import { detectTrashInImage } from '../services/roboflowService';
 import type { AnalysisResult } from '../types/analysis';
+
+// Add helper function to draw bounding boxes and labels
+function drawDetections(canvas: HTMLCanvasElement, predictions: any[]): string {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas.toDataURL();
+
+  // Style for the bounding boxes
+  ctx.strokeStyle = '#00ff00';
+  ctx.lineWidth = 3;
+  ctx.font = '16px Arial';
+  ctx.fillStyle = '#00ff00';
+
+  predictions.forEach(prediction => {
+    const x = prediction.x - prediction.width / 2;
+    const y = prediction.y - prediction.height / 2;
+    
+    // Draw the box
+    ctx.strokeRect(x, y, prediction.width, prediction.height);
+    
+    // Draw the label with confidence
+    const label = `${prediction.class} ${Math.round(prediction.confidence * 100)}%`;
+    ctx.fillRect(x, y - 20, ctx.measureText(label).width + 10, 20);
+    ctx.fillStyle = '#000000';
+    ctx.fillText(label, x + 5, y - 5);
+    ctx.fillStyle = '#00ff00';
+  });
+
+  return canvas.toDataURL();
+}
 
 /**
  * Process a video file and analyze its content using real algorithms and Gemini API
@@ -66,10 +94,15 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
           detectTrashInImage(frameBase64)
         ]);
         
-        // If trash is detected in this frame, store the image
+        // If trash is detected, draw bounding boxes and store the annotated image
         if ((geminiResult && geminiResult.count > 0) || 
             (roboflowResult && roboflowResult.predictions && roboflowResult.predictions.length > 0)) {
-          trashDetectionImages.push(frameBase64);
+          if (roboflowResult && roboflowResult.predictions) {
+            const annotatedImage = drawDetections(canvas, roboflowResult.predictions);
+            trashDetectionImages.push(annotatedImage);
+          } else {
+            trashDetectionImages.push(frameBase64);
+          }
         }
         
         // Combine results from both APIs
