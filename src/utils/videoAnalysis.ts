@@ -2,18 +2,6 @@ import { analyzeImage, extractVideoFrame, delay, GeminiResponse } from '../servi
 import { detectTrashInImage } from '../services/roboflowService';
 import type { AnalysisResult } from '../types/analysis';
 
-export interface AnalysisResult {
-  averageDepth: number;
-  maxDepth: number;
-  depthProfile: number[];
-  averageVelocity: number;
-  flowMagnitude: number;
-  trashCount: number;
-  trashCategories?: string[];
-  environmentalImpact?: string;
-  frames: ImageData[];
-}
-
 /**
  * Process a video file and analyze its content using real algorithms and Gemini API
  */
