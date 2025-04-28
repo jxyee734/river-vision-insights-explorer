@@ -7,9 +7,8 @@ export interface AnalysisResult {
   averageVelocity: number;
   flowMagnitude: number;
   trashCount: number;
-  trashCategories?: string[];
-  environmentalImpact?: string;
+  trashCategories: string[]; // Changed from optional to required
+  environmentalImpact: string; // Changed from optional to required
   frames: ImageData[];
-  trashDetectionImages?: string[]; // Base64 encoded images where trash was detected
+  trashDetectionImages: string[]; // Changed from optional to required - Base64 encoded images where trash was detected
 }
-

@@ -13,16 +13,16 @@ interface TrashCategory {
 
 interface TrashDetectionProps {
   trashCount: number;
-  trashCategories?: string[];
-  environmentalImpact?: string;
-  trashImages?: string[];
+  trashCategories: string[];
+  environmentalImpact: string;
+  trashImages: string[];
 }
 
 const TrashDetection: React.FC<TrashDetectionProps> = ({ 
   trashCount, 
-  trashCategories = [], 
+  trashCategories, 
   environmentalImpact,
-  trashImages = []
+  trashImages
 }) => {
   const [activeTab, setActiveTab] = useState('overview');
 

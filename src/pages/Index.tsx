@@ -11,18 +11,7 @@ import { ArrowDownWideNarrow, CloudLightning, FileVideo, Map as MapIcon } from "
 import OpticalFlowVisualization from '@/components/OpticalFlowVisualization';
 import RiverModel3D from '@/components/RiverModel3D';
 import MapView from '@/components/MapView';
-
-interface AnalysisResult {
-  averageDepth: number;
-  maxDepth: number;
-  depthProfile: number[];
-  averageVelocity: number;
-  flowMagnitude: number;
-  trashCount: number;
-  trashCategories: string[];
-  environmentalImpact: string[];
-  trashDetectionImages: ImageData[];
-}
+import { AnalysisResult } from '@/types/analysis';
 
 interface Frame {
   imageData: ImageData;

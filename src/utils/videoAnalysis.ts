@@ -1,3 +1,4 @@
+
 import { analyzeImage, extractVideoFrame, delay, GeminiResponse } from '../services/geminiService';
 import { detectTrashInImage } from '../services/roboflowService';
 import type { AnalysisResult } from '../types/analysis';
@@ -112,9 +113,9 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
       flowMagnitude: flowMetrics.flowMagnitude,
       trashCount: totalTrashCount,
       trashCategories: Array.from(allCategories),
-      environmentalImpact: environmentalAnalysis,
+      environmentalImpact: environmentalAnalysis || 'No significant environmental impact detected',
       frames,
-      trashDetectionImages
+      trashDetectionImages: trashDetectionImages || []
     };
   } catch (error) {
     console.error("Error analyzing video:", error);
