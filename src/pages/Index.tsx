@@ -12,6 +12,7 @@ import OpticalFlowVisualization from '@/components/OpticalFlowVisualization';
 import RiverModel3D from '@/components/RiverModel3D';
 import MapView from '@/components/MapView';
 import { AnalysisResult } from '@/types/analysis';
+import SatelliteReport from '@/components/SatelliteReport';
 
 interface Frame {
   imageData: ImageData;
@@ -174,12 +175,13 @@ const Index = () => {
               <div className="bg-white rounded-lg shadow">
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
                   <TabsList className="w-full border-b">
-                    <TabsTrigger value="depth" className="flex-1">Depth Analysis</TabsTrigger>
-                    <TabsTrigger value="flow" className="flex-1">Flow Analysis</TabsTrigger>
-                    <TabsTrigger value="trash" className="flex-1">Trash Detection</TabsTrigger>
-                    <TabsTrigger value="optical" className="flex-1">Optical Flow</TabsTrigger>
-                    <TabsTrigger value="3d" className="flex-1">3D Model</TabsTrigger>
-                    <TabsTrigger value="map" className="flex-1">Map</TabsTrigger>
+                    <TabsTrigger value="depth">Depth Analysis</TabsTrigger>
+                    <TabsTrigger value="flow">Flow Analysis</TabsTrigger>
+                    <TabsTrigger value="trash">Trash Detection</TabsTrigger>
+                    <TabsTrigger value="optical">Optical Flow</TabsTrigger>
+                    <TabsTrigger value="3d">3D Model</TabsTrigger>
+                    <TabsTrigger value="map">Map</TabsTrigger>
+                    <TabsTrigger value="report">Report</TabsTrigger>
                   </TabsList>
                   
                   <div className="p-4">
@@ -228,6 +230,19 @@ const Index = () => {
 
                     <TabsContent value="map">
                       <MapView />
+                    </TabsContent>
+
+                    <TabsContent value="report">
+                      <SatelliteReport 
+                        data={{
+                          averageDepth: analysisResult.averageDepth,
+                          maxDepth: analysisResult.maxDepth,
+                          averageVelocity: analysisResult.averageVelocity,
+                          trashCount: analysisResult.trashCount,
+                          trashCategories: analysisResult.trashCategories,
+                          environmentalImpact: analysisResult.environmentalImpact
+                        }}
+                      />
                     </TabsContent>
                   </div>
                 </Tabs>
