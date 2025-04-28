@@ -1,4 +1,6 @@
 import { analyzeImage, extractVideoFrame, delay, GeminiResponse } from '../services/geminiService';
+import { detectTrashInImage } from '../services/roboflowService';
+import type { AnalysisResult } from '../types/analysis';
 
 export interface AnalysisResult {
   averageDepth: number;
@@ -27,28 +29,24 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
   const frames: ImageData[] = [];
   let trashAnalysis: GeminiResponse | null = null;
   let depthProfile: number[] = [];
+  let totalTrashCount = 0;
+  let allCategories: Set<string> = new Set();
+  let environmentalAnalysis = '';
   
   try {
     await video.play();
     
     if (window.updateProcessingStage) window.updateProcessingStage(0);
     
-    // Process every frame at 1-second intervals
     const totalDuration = video.duration;
     const frameInterval = 1; // 1 second interval
     
-    let totalTrashCount = 0;
-    let allCategories: Set<string> = new Set();
-    let environmentalAnalysis = '';
-    
     for (let currentTime = 0; currentTime < totalDuration; currentTime += frameInterval) {
-      // Seek to position
       video.currentTime = currentTime;
-      await delay(100); // Reduced delay for faster processing
+      await delay(100);
       
       if (window.updateProcessingStage) window.updateProcessingStage(1);
       
-      // Extract frame
       const frameBase64 = extractVideoFrame(video);
       
       // Create a temporary image
@@ -68,21 +66,33 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
         const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         frames.push(frameData);
         
-        // Analyze each frame for trash
+        // Analyze frame with both Gemini and Roboflow
         if (window.updateProcessingStage) window.updateProcessingStage(2);
         
-        const trashAnalysis = await analyzeImage(frameBase64, 
-          "Analyze this river frame and identify any trash or pollution. Return a JSON with: count (number of trash items), categories (array of types like 'plastic', 'metal'), and analysis (brief environmental impact). Be accurate and conservative in counting."
-        );
+        const [geminiResult, roboflowResult] = await Promise.all([
+          analyzeImage(frameBase64, 
+            "Analyze this river frame and identify any trash or pollution. Return a JSON with: count (number of trash items), categories (array of types like 'plastic', 'metal'), and analysis (brief environmental impact). Be accurate and conservative in counting."
+          ),
+          detectTrashInImage(frameBase64)
+        ]);
         
-        if (trashAnalysis) {
-          totalTrashCount += trashAnalysis.count || 0;
-          if (trashAnalysis.categories) {
-            trashAnalysis.categories.forEach(cat => allCategories.add(cat));
+        // Combine results from both APIs
+        if (geminiResult) {
+          totalTrashCount += geminiResult.count || 0;
+          if (geminiResult.categories) {
+            geminiResult.categories.forEach(cat => allCategories.add(cat));
           }
-          if (trashAnalysis.analysis && !environmentalAnalysis) {
-            environmentalAnalysis = trashAnalysis.analysis;
+          if (geminiResult.analysis && !environmentalAnalysis) {
+            environmentalAnalysis = geminiResult.analysis;
           }
+        }
+        
+        // Add Roboflow detections
+        if (roboflowResult && roboflowResult.predictions) {
+          totalTrashCount += roboflowResult.predictions.length;
+          roboflowResult.predictions.forEach(prediction => {
+            allCategories.add(prediction.class);
+          });
         }
         
         const depthEstimate = estimateDepthFromImage(frameData);
