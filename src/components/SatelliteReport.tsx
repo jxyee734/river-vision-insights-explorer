@@ -2,8 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useGPS } from '@/hooks/useGPS';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 import { FileChartColumn, Map, MapPin } from 'lucide-react';
 
 interface SatelliteReportProps {
@@ -17,33 +16,14 @@ interface SatelliteReportProps {
   };
 }
 
+const containerStyle = {
+  width: '100%',
+  height: '300px'
+};
+
 const SatelliteReport: React.FC<SatelliteReportProps> = ({ data }) => {
-  const mapContainer = React.useRef<HTMLDivElement>(null);
-  const map = React.useRef<mapboxgl.Map | null>(null);
   const { location } = useGPS();
-  const [mapboxToken, setMapboxToken] = React.useState('');
-
-  React.useEffect(() => {
-    if (!mapContainer.current || !location || !mapboxToken) return;
-
-    mapboxgl.accessToken = mapboxToken;
-    
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/satellite-v9',
-      center: [location.longitude, location.latitude],
-      zoom: 15
-    });
-
-    // Add marker for current location
-    new mapboxgl.Marker()
-      .setLngLat([location.longitude, location.latitude])
-      .addTo(map.current);
-
-    return () => {
-      map.current?.remove();
-    };
-  }, [location, mapboxToken]);
+  const [googleMapsKey, setGoogleMapsKey] = React.useState('');
 
   return (
     <div className="space-y-6">
@@ -56,22 +36,43 @@ const SatelliteReport: React.FC<SatelliteReportProps> = ({ data }) => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {!mapboxToken ? (
+            {!googleMapsKey ? (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Please enter your Mapbox public token to view the satellite map.
-                  You can get one from <a href="https://mapbox.com" className="text-blue-500 hover:underline" target="_blank" rel="noopener noreferrer">mapbox.com</a>
+                  Please enter your Google Maps API key to view the satellite map.
+                  You can get one from the <a href="https://console.cloud.google.com/" className="text-blue-500 hover:underline" target="_blank" rel="noopener noreferrer">Google Cloud Console</a>
                 </p>
                 <input
                   type="text"
-                  placeholder="Enter Mapbox public token"
+                  placeholder="Enter Google Maps API key"
                   className="w-full px-3 py-2 border rounded-md"
-                  onChange={(e) => setMapboxToken(e.target.value)}
+                  onChange={(e) => setGoogleMapsKey(e.target.value)}
                 />
               </div>
             ) : null}
             <div className="h-[300px] relative rounded-lg overflow-hidden">
-              <div ref={mapContainer} className="absolute inset-0" />
+              {location && googleMapsKey && (
+                <LoadScript googleMapsApiKey={googleMapsKey}>
+                  <GoogleMap
+                    mapContainerStyle={containerStyle}
+                    center={{
+                      lat: location.latitude,
+                      lng: location.longitude
+                    }}
+                    zoom={15}
+                    options={{
+                      mapTypeId: 'satellite'
+                    }}
+                  >
+                    <Marker
+                      position={{
+                        lat: location.latitude,
+                        lng: location.longitude
+                      }}
+                    />
+                  </GoogleMap>
+                </LoadScript>
+              )}
             </div>
             {location && (
               <div className="mt-4 flex items-start gap-2">
