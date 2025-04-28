@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { toast } from "sonner";
 import UploadSection from '@/components/UploadSection';
@@ -20,7 +19,9 @@ interface AnalysisResult {
   averageVelocity: number;
   flowMagnitude: number;
   trashCount: number;
-  frames: ImageData[];
+  trashCategories: string[];
+  environmentalImpact: string[];
+  trashDetectionImages: ImageData[];
 }
 
 interface Frame {
@@ -211,6 +212,9 @@ const Index = () => {
                     <TabsContent value="trash">
                       <TrashDetection 
                         trashCount={analysisResult.trashCount}
+                        trashCategories={analysisResult.trashCategories}
+                        environmentalImpact={analysisResult.environmentalImpact}
+                        trashImages={analysisResult.trashDetectionImages}
                       />
                     </TabsContent>
                     

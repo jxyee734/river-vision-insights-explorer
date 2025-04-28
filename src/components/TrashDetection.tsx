@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trash2, AlertTriangle, Info, Check, Filter } from 'lucide-react';
+import { Trash2, AlertTriangle, Info, Check, Filter, ImageDown } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 
@@ -16,21 +15,21 @@ interface TrashDetectionProps {
   trashCount: number;
   trashCategories?: string[];
   environmentalImpact?: string;
+  trashImages?: string[];
 }
 
 const TrashDetection: React.FC<TrashDetectionProps> = ({ 
   trashCount, 
   trashCategories = [], 
-  environmentalImpact 
+  environmentalImpact,
+  trashImages = []
 }) => {
   const [activeTab, setActiveTab] = useState('overview');
 
-  // Generate trash categories based on real data if available
   const generateTrashCategories = (total: number, categories: string[]): TrashCategory[] => {
     if (total === 0) return [];
     
     if (categories && categories.length > 0) {
-      // Use real categories from Gemini AI analysis
       const totalItems = categories.length > 0 ? total : 0;
       const itemsPerCategory = Math.max(1, Math.floor(total / categories.length));
       
@@ -48,7 +47,6 @@ const TrashDetection: React.FC<TrashDetectionProps> = ({
         };
       });
     } else {
-      // Fallback to simulated categories if no real data
       const plasticCount = Math.max(1, Math.floor(total * 0.6));
       const metalCount = Math.floor(total * 0.2);
       const otherCount = total - plasticCount - metalCount;
@@ -78,7 +76,6 @@ const TrashDetection: React.FC<TrashDetectionProps> = ({
 
   const categoryItems = generateTrashCategories(trashCount, trashCategories);
 
-  // Determine pollution level
   const getPollutionLevel = (count: number) => {
     if (count === 0) return { level: 'Minimal', color: 'text-green-600', bgColor: 'bg-green-100' };
     if (count <= 2) return { level: 'Low', color: 'text-yellow-600', bgColor: 'bg-yellow-100' };
@@ -99,6 +96,7 @@ const TrashDetection: React.FC<TrashDetectionProps> = ({
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="categories">Categories</TabsTrigger>
             <TabsTrigger value="impact">Environmental Impact</TabsTrigger>
+            <TabsTrigger value="images">Detected Items</TabsTrigger>
           </TabsList>
           
           <TabsContent value="overview">
@@ -226,6 +224,44 @@ const TrashDetection: React.FC<TrashDetectionProps> = ({
                   <Filter className="h-4 w-4 mr-2" /> Generate Detailed Report
                 </Button>
               </div>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="images">
+            <div className="space-y-4">
+              {trashImages && trashImages.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {trashImages.map((image, index) => (
+                    <div key={index} className="relative group">
+                      <img 
+                        src={image} 
+                        alt={`Detected trash item ${index + 1}`}
+                        className="w-full h-48 object-cover rounded-lg border border-gray-200"
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center">
+                        <Button 
+                          variant="secondary" 
+                          size="sm" 
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => {
+                            const link = document.createElement('a');
+                            link.href = image;
+                            link.download = `trash-detection-${index + 1}.jpg`;
+                            link.click();
+                          }}
+                        >
+                          <ImageDown className="h-4 w-4 mr-2" />
+                          Save Image
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 rounded-lg bg-gray-50 border border-gray-100 text-center">
+                  <p className="text-gray-500">No trash detection images available</p>
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>

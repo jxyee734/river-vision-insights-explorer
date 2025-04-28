@@ -15,6 +15,7 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
   });
   
   const frames: ImageData[] = [];
+  const trashDetectionImages: string[] = [];
   let trashAnalysis: GeminiResponse | null = null;
   let depthProfile: number[] = [];
   let totalTrashCount = 0;
@@ -64,6 +65,12 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
           detectTrashInImage(frameBase64)
         ]);
         
+        // If trash is detected in this frame, store the image
+        if ((geminiResult && geminiResult.count > 0) || 
+            (roboflowResult && roboflowResult.predictions && roboflowResult.predictions.length > 0)) {
+          trashDetectionImages.push(frameBase64);
+        }
+        
         // Combine results from both APIs
         if (geminiResult) {
           totalTrashCount += geminiResult.count || 0;
@@ -106,7 +113,8 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
       trashCount: totalTrashCount,
       trashCategories: Array.from(allCategories),
       environmentalImpact: environmentalAnalysis,
-      frames
+      frames,
+      trashDetectionImages
     };
   } catch (error) {
     console.error("Error analyzing video:", error);
