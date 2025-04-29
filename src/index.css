@@ -91,6 +91,7 @@
 
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
@@ -119,4 +120,30 @@
     rgba(100, 181, 246, 0.8) 30%, 
     rgba(30, 136, 229, 0.9) 60%, 
     rgba(13, 71, 161, 1) 100%);
+}
+
+/* Modern UI additions */
+.glass-card {
+  @apply bg-white/90 backdrop-blur-sm border border-white/20 shadow-lg;
+}
+
+.hover-lift {
+  @apply transition-transform duration-200 hover:-translate-y-1;
+}
+
+.fade-in {
+  @apply animate-[fadeIn_0.5s_ease-in-out];
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.card-gradient {
+  background: linear-gradient(120deg, #e0f7fa, #e1f5fe);
+}
+
+.section-padding {
+  @apply py-6 px-4 sm:px-6 lg:px-8;
 }
