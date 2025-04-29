@@ -2,8 +2,8 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useGPS } from '@/hooks/useGPS';
-import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
-import { FileChartColumn, Map, MapPin } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { FileChartColumn, Map, MapPin, Droplet, Water, TestTubes } from 'lucide-react';
 
 interface SatelliteReportProps {
   data: {
@@ -13,18 +13,44 @@ interface SatelliteReportProps {
     trashCount: number;
     trashCategories: string[];
     environmentalImpact: string;
+    // Add new water quality parameters
+    phValue?: number;
+    bodLevel?: number;
+    ammoniacalNitrogen?: number;
+    suspendedSolids?: number;
   };
 }
 
-const containerStyle = {
-  width: '100%',
-  height: '300px'
-};
-
 const SatelliteReport: React.FC<SatelliteReportProps> = ({ data }) => {
   const { location } = useGPS();
-  const [googleMapsKey, setGoogleMapsKey] = React.useState('');
 
+  // Determine water quality index based on parameters
+  const getWaterQualityIndex = () => {
+    // This is a simplified calculation
+    if (!data.phValue || !data.bodLevel || !data.ammoniacalNitrogen || !data.suspendedSolids) {
+      return { label: "Unknown", color: "bg-gray-100 text-gray-800" };
+    }
+    
+    // Simplified WQI calculation
+    const isGood = 
+      data.phValue >= 6.5 && data.phValue <= 8.5 &&
+      data.bodLevel < 3 &&
+      data.ammoniacalNitrogen < 0.3 &&
+      data.suspendedSolids < 50;
+    
+    const isModerate = 
+      data.phValue >= 6.0 && data.phValue <= 9.0 &&
+      data.bodLevel < 6 &&
+      data.ammoniacalNitrogen < 0.9 &&
+      data.suspendedSolids < 150;
+    
+    if (isGood) return { label: "Good", color: "bg-green-100 text-green-800" };
+    if (isModerate) return { label: "Moderate", color: "bg-yellow-100 text-yellow-800" };
+    return { label: "Poor", color: "bg-red-100 text-red-800" };
+  };
+
+  const waterQuality = getWaterQualityIndex();
+  
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -32,46 +58,22 @@ const SatelliteReport: React.FC<SatelliteReportProps> = ({ data }) => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Map className="h-5 w-5" />
-              Location & Satellite View
+              Location & Map View
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {!googleMapsKey ? (
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Please enter your Google Maps API key to view the satellite map.
-                  You can get one from the <a href="https://console.cloud.google.com/" className="text-blue-500 hover:underline" target="_blank" rel="noopener noreferrer">Google Cloud Console</a>
-                </p>
-                <input
-                  type="text"
-                  placeholder="Enter Google Maps API key"
-                  className="w-full px-3 py-2 border rounded-md"
-                  onChange={(e) => setGoogleMapsKey(e.target.value)}
-                />
-              </div>
-            ) : null}
             <div className="h-[300px] relative rounded-lg overflow-hidden">
-              {location && googleMapsKey && (
-                <LoadScript googleMapsApiKey={googleMapsKey}>
-                  <GoogleMap
-                    mapContainerStyle={containerStyle}
-                    center={{
-                      lat: location.latitude,
-                      lng: location.longitude
-                    }}
-                    zoom={15}
-                    options={{
-                      mapTypeId: 'satellite'
-                    }}
-                  >
-                    <Marker
-                      position={{
-                        lat: location.latitude,
-                        lng: location.longitude
-                      }}
-                    />
-                  </GoogleMap>
-                </LoadScript>
+              {location && (
+                <iframe
+                  width="100%"
+                  height="100%"
+                  frameBorder="0"
+                  scrolling="no"
+                  marginHeight={0}
+                  marginWidth={0}
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${location.longitude - 0.01},${location.latitude - 0.01},${location.longitude + 0.01},${location.latitude + 0.01}&layer=mapnik&marker=${location.latitude},${location.longitude}`}
+                  style={{ border: '1px solid #ddd', borderRadius: '0.5rem' }}
+                />
               )}
             </div>
             {location && (
@@ -82,6 +84,14 @@ const SatelliteReport: React.FC<SatelliteReportProps> = ({ data }) => {
                   <p className="text-sm text-muted-foreground">
                     Lat: {location.latitude.toFixed(6)}, Long: {location.longitude.toFixed(6)}
                   </p>
+                  <a 
+                    href={`https://www.openstreetmap.org/?mlat=${location.latitude}&mlon=${location.longitude}#map=15/${location.latitude}/${location.longitude}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="text-sm text-blue-500 hover:underline"
+                  >
+                    View on OpenStreetMap
+                  </a>
                 </div>
               </div>
             )}
@@ -113,6 +123,34 @@ const SatelliteReport: React.FC<SatelliteReportProps> = ({ data }) => {
                 <div>
                   <p className="text-sm text-muted-foreground">Trash Items</p>
                   <p className="text-lg font-medium">{data.trashCount}</p>
+                </div>
+              </div>
+              
+              {/* Water Quality Parameters */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Droplet className="h-4 w-4 text-blue-500" />
+                  <p className="font-medium">Water Quality</p>
+                  <Badge className={waterQuality.color}>{waterQuality.label}</Badge>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 mt-3">
+                  <div>
+                    <p className="text-sm text-muted-foreground">pH Value</p>
+                    <p className="text-lg font-medium">{data.phValue ? data.phValue.toFixed(1) : "N/A"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">BOD</p>
+                    <p className="text-lg font-medium">{data.bodLevel ? `${data.bodLevel.toFixed(1)} mg/L` : "N/A"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">NH₃-N</p>
+                    <p className="text-lg font-medium">{data.ammoniacalNitrogen ? `${data.ammoniacalNitrogen.toFixed(2)} mg/L` : "N/A"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Suspended Solids</p>
+                    <p className="text-lg font-medium">{data.suspendedSolids ? `${data.suspendedSolids.toFixed(1)} mg/L` : "N/A"}</p>
+                  </div>
                 </div>
               </div>
               

@@ -11,4 +11,10 @@ export interface AnalysisResult {
   environmentalImpact: string; // Changed from optional to required
   frames: ImageData[];
   trashDetectionImages: string[]; // Changed from optional to required - Base64 encoded images where trash was detected
+  
+  // Water quality parameters
+  phValue?: number;
+  bodLevel?: number;
+  ammoniacalNitrogen?: number;
+  suspendedSolids?: number;
 }

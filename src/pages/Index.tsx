@@ -240,7 +240,11 @@ const Index = () => {
                           averageVelocity: analysisResult.averageVelocity,
                           trashCount: analysisResult.trashCount,
                           trashCategories: analysisResult.trashCategories,
-                          environmentalImpact: analysisResult.environmentalImpact
+                          environmentalImpact: analysisResult.environmentalImpact,
+                          phValue: analysisResult.phValue || 7.2, // Default value if not provided
+                          bodLevel: analysisResult.bodLevel || 2.5, // Default value if not provided
+                          ammoniacalNitrogen: analysisResult.ammoniacalNitrogen || 0.25, // Default value if not provided
+                          suspendedSolids: analysisResult.suspendedSolids || 35 // Default value if not provided
                         }}
                       />
                     </TabsContent>
