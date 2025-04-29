@@ -5,43 +5,43 @@
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 220 40% 12%;
+    --foreground: 210 40% 98%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 220 40% 14%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 220 40% 14%;
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 201 94% 41%;
+    --primary: 199 89% 48%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 199 89% 48%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 199 50% 30%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 40% 20%;
+    --muted-foreground: 215.4 16.3% 70%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 220 40% 20%;
+    --accent-foreground: 210 40% 98%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 220 40% 18%;
+    --input: 214.3 31.8% 30%;
+    --ring: 199 89% 48%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-background: 220 40% 14%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 199 89% 48%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
+    --sidebar-accent: 220 40% 18%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 220 40% 20%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
@@ -92,11 +92,16 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 20 A1 1 0 0 0 50 80 A1 1 0 0 0 50 20' fill='none' stroke='rgba(59, 130, 246, 0.05)' stroke-width='0.5'/%3E%3Ccircle cx='50' cy='50' r='30' fill='none' stroke='rgba(59, 130, 246, 0.03)' stroke-width='0.5'/%3E%3C/svg%3E"),
+      radial-gradient(circle at 30% 20%, rgba(20, 60, 120, 0.15) 0%, transparent 60%),
+      radial-gradient(circle at 70% 80%, rgba(30, 100, 200, 0.1) 0%, transparent 40%);
+    background-size: 40px 40px, 100% 100%, 100% 100%;
+    background-attachment: fixed;
   }
 }
 
 .water-bg {
-  background: linear-gradient(to bottom, #E3F2FD, #BBDEFB, #90CAF9);
+  background: linear-gradient(to bottom, #051937, #062048, #072759, #082e6b, #09357e);
 }
 
 .flow-pattern {
@@ -116,15 +121,15 @@
 
 .depth-gradient {
   background: linear-gradient(to bottom, 
-    rgba(179, 229, 252, 0.7) 0%, 
-    rgba(100, 181, 246, 0.8) 30%, 
-    rgba(30, 136, 229, 0.9) 60%, 
-    rgba(13, 71, 161, 1) 100%);
+    rgba(8, 46, 107, 0.7) 0%, 
+    rgba(7, 39, 89, 0.8) 30%, 
+    rgba(6, 32, 72, 0.9) 60%, 
+    rgba(5, 25, 55, 1) 100%);
 }
 
 /* Modern UI additions */
 .glass-card {
-  @apply bg-white/90 backdrop-blur-sm border border-white/20 shadow-lg;
+  @apply bg-black/40 backdrop-blur-md border border-white/10 shadow-lg;
 }
 
 .hover-lift {
@@ -141,9 +146,51 @@
 }
 
 .card-gradient {
-  background: linear-gradient(120deg, #e0f7fa, #e1f5fe);
+  background: linear-gradient(120deg, #051937, #062048);
 }
 
 .section-padding {
   @apply py-6 px-4 sm:px-6 lg:px-8;
+}
+
+.nasa-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.nasa-heading {
+  @apply text-xl font-bold text-primary uppercase tracking-wider;
+}
+
+.space-dot {
+  @apply inline-block w-1.5 h-1.5 rounded-full bg-primary mx-1;
+}
+
+.tech-border {
+  position: relative;
+}
+
+.tech-border::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary), transparent);
+}
+
+.tech-border::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 60%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--primary));
+}
+
+.nasa-badge {
+  @apply inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-medium rounded bg-primary/20 text-primary-foreground border border-primary/30;
 }
