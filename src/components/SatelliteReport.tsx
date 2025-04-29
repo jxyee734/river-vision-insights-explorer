@@ -1,8 +1,10 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useGPS } from '@/hooks/useGPS';
 import { Badge } from '@/components/ui/badge';
-import { FileChartColumn, Map, MapPin, Droplet, TestTubes } from 'lucide-react';
+import { FileChartColumn, Map, MapPin, Droplet, TestTubes, Wind, Thermometer, CloudRain, Calendar, Clock, Gauge, Trash } from 'lucide-react';
+import { format } from 'date-fns';
 
 interface SatelliteReportProps {
   data: {
@@ -12,22 +14,52 @@ interface SatelliteReportProps {
     trashCount: number;
     trashCategories: string[];
     environmentalImpact: string;
-    // Add new water quality parameters
+    // Water quality parameters
     phValue?: number;
     bodLevel?: number;
     ammoniacalNitrogen?: number;
     suspendedSolids?: number;
+    // Weather data
+    weatherData?: {
+      temperature: number;
+      rainfall: number;
+      humidity: number;
+      windSpeed: number;
+      timestamp: Date;
+    };
+    // Water quality index
+    waterQualityIndex?: {
+      index: number;
+      label: string;
+      color: string;
+    };
+    // Pollution prediction
+    pollutionPrediction?: {
+      spreadRadius: number;
+      intensity: number;
+      directionVector: { x: number, y: number };
+      timeToSpread: number;
+    };
   };
 }
 
 const SatelliteReport: React.FC<SatelliteReportProps> = ({ data }) => {
   const { location } = useGPS();
+  const currentDateTime = new Date();
 
-  // Determine water quality index based on parameters
-  const getWaterQualityIndex = () => {
-    // This is a simplified calculation
+  // Determine water quality index based on parameters if not provided
+  const waterQuality = data.waterQualityIndex || { 
+    label: data.phValue && data.bodLevel && data.ammoniacalNitrogen && data.suspendedSolids ? 
+      getWaterQualityLabel() : "Unknown", 
+    color: data.phValue && data.bodLevel && data.ammoniacalNitrogen && data.suspendedSolids ? 
+      getWaterQualityColor() : "bg-gray-100 text-gray-800",
+    index: 0
+  };
+
+  // Helper functions for backward compatibility
+  function getWaterQualityLabel() {
     if (!data.phValue || !data.bodLevel || !data.ammoniacalNitrogen || !data.suspendedSolids) {
-      return { label: "Unknown", color: "bg-gray-100 text-gray-800" };
+      return "Unknown";
     }
     
     // Simplified WQI calculation
@@ -43,12 +75,17 @@ const SatelliteReport: React.FC<SatelliteReportProps> = ({ data }) => {
       data.ammoniacalNitrogen < 0.9 &&
       data.suspendedSolids < 150;
     
-    if (isGood) return { label: "Good", color: "bg-green-100 text-green-800" };
-    if (isModerate) return { label: "Moderate", color: "bg-yellow-100 text-yellow-800" };
-    return { label: "Poor", color: "bg-red-100 text-red-800" };
-  };
+    if (isGood) return "Good";
+    if (isModerate) return "Moderate";
+    return "Poor";
+  }
 
-  const waterQuality = getWaterQualityIndex();
+  function getWaterQualityColor() {
+    const label = getWaterQualityLabel();
+    if (label === "Good") return "bg-green-100 text-green-800";
+    if (label === "Moderate") return "bg-yellow-100 text-yellow-800";
+    return "bg-red-100 text-red-800";
+  }
   
   return (
     <div className="space-y-6">
@@ -94,6 +131,18 @@ const SatelliteReport: React.FC<SatelliteReportProps> = ({ data }) => {
                 </div>
               </div>
             )}
+            
+            {/* DateTime information */}
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar className="h-4 w-4 text-blue-500" />
+                <p className="font-medium">Date: {format(data.weatherData?.timestamp || currentDateTime, 'PPP')}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-blue-500" />
+                <p className="font-medium">Time: {format(data.weatherData?.timestamp || currentDateTime, 'p')}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -131,6 +180,11 @@ const SatelliteReport: React.FC<SatelliteReportProps> = ({ data }) => {
                   <Droplet className="h-4 w-4 text-blue-500" />
                   <p className="font-medium">Water Quality</p>
                   <Badge className={waterQuality.color}>{waterQuality.label}</Badge>
+                  {waterQuality.index > 0 && (
+                    <span className="text-sm text-muted-foreground ml-1">
+                      (Index: {waterQuality.index}/10)
+                    </span>
+                  )}
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4 mt-3">
@@ -153,9 +207,51 @@ const SatelliteReport: React.FC<SatelliteReportProps> = ({ data }) => {
                 </div>
               </div>
               
+              {/* Weather Information */}
+              {data.weatherData && (
+                <div>
+                  <h3 className="text-sm font-medium mb-2">Weather Conditions</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center gap-2">
+                      <Thermometer className="h-4 w-4 text-red-500" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Temperature</p>
+                        <p className="font-medium">{data.weatherData.temperature}°C</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CloudRain className="h-4 w-4 text-blue-500" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Rainfall</p>
+                        <p className="font-medium">{data.weatherData.rainfall} mm</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Droplet className="h-4 w-4 text-blue-300" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Humidity</p>
+                        <p className="font-medium">{data.weatherData.humidity}%</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Wind className="h-4 w-4 text-blue-300" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Wind Speed</p>
+                        <p className="font-medium">{data.weatherData.windSpeed} m/s</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Trash Information */}
               <div>
-                <p className="text-sm text-muted-foreground mb-2">Trash Categories</p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <Trash className="h-4 w-4 text-orange-500" />
+                  <p className="font-medium">Trash Analysis</p>
+                </div>
+                
+                <div className="flex flex-wrap gap-2 mt-2">
                   {data.trashCategories.map((category, index) => (
                     <span 
                       key={index}
@@ -166,6 +262,37 @@ const SatelliteReport: React.FC<SatelliteReportProps> = ({ data }) => {
                   ))}
                 </div>
               </div>
+
+              {/* Pollution Prediction */}
+              {data.pollutionPrediction && (
+                <div className="border-t border-gray-100 pt-4 mt-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Gauge className="h-4 w-4 text-purple-500" />
+                    <p className="font-medium">Pollution Spread Prediction</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 mt-2">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Spread Radius</p>
+                      <p className="text-lg font-medium">{data.pollutionPrediction.spreadRadius} m</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Intensity</p>
+                      <p className="text-lg font-medium">{data.pollutionPrediction.intensity}/10</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Time to Spread</p>
+                      <p className="text-lg font-medium">{data.pollutionPrediction.timeToSpread} hrs</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Direction</p>
+                      <p className="text-lg font-medium">
+                        {data.pollutionPrediction.directionVector.x.toFixed(1)}, {data.pollutionPrediction.directionVector.y.toFixed(1)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <p className="text-sm text-muted-foreground mb-2">Environmental Impact</p>

@@ -17,4 +17,26 @@ export interface AnalysisResult {
   bodLevel?: number;
   ammoniacalNitrogen?: number;
   suspendedSolids?: number;
+  
+  // New parameters
+  weatherData?: {
+    temperature: number;
+    rainfall: number;
+    humidity: number;
+    windSpeed: number;
+    timestamp: Date;
+  };
+  
+  waterQualityIndex?: {
+    index: number;
+    label: string;
+    color: string;
+  };
+  
+  pollutionPrediction?: {
+    spreadRadius: number;
+    intensity: number;
+    directionVector: { x: number, y: number };
+    timeToSpread: number;
+  };
 }

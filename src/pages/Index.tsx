@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { toast } from "sonner";
 import UploadSection from '@/components/UploadSection';
 import DepthVisualization from '@/components/DepthVisualization';
@@ -8,11 +9,10 @@ import ProcessingVisualization from '@/components/ProcessingVisualization';
 import { analyzeVideo } from '@/utils/videoAnalysis';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowDownWideNarrow, CloudLightning, FileVideo, Map as MapIcon } from "lucide-react";
-import OpticalFlowVisualization from '@/components/OpticalFlowVisualization';
-import RiverModel3D from '@/components/RiverModel3D';
-import MapView from '@/components/MapView';
 import { AnalysisResult } from '@/types/analysis';
 import SatelliteReport from '@/components/SatelliteReport';
+import { useGPS } from '@/hooks/useGPS';
+import { calculateWaterQualityIndex, fetchWeatherData, predictPollutionSpread } from '@/utils/predictionModel';
 
 interface Frame {
   imageData: ImageData;
@@ -31,10 +31,10 @@ declare global {
 const Index = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
-  const [activeTab, setActiveTab] = useState('depth');
+  const [activeTab, setActiveTab] = useState('report');
   const [processingStage, setProcessingStage] = useState(0);
   const [frames, setFrames] = useState<Frame[]>([]);
-  const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
+  const { location } = useGPS();
 
   const handleVideoUpload = async (file: File) => {
     try {
@@ -45,9 +45,45 @@ const Index = () => {
         setProcessingStage(stage);
       };
       
-      toast.info("Processing video with Gemini AI, please wait...");
+      toast.info("Processing video with AI analysis, please wait...");
       
       const result = await analyzeVideo(file);
+      
+      // Fetch weather data if location is available
+      if (location) {
+        try {
+          const weatherData = await fetchWeatherData(location.latitude, location.longitude);
+          result.weatherData = weatherData;
+        } catch (error) {
+          console.error("Error fetching weather data:", error);
+        }
+      }
+      
+      // Calculate water quality index if parameters are available
+      if (result.phValue && result.bodLevel && result.ammoniacalNitrogen && result.suspendedSolids) {
+        result.waterQualityIndex = calculateWaterQualityIndex(
+          result.phValue,
+          result.bodLevel,
+          result.ammoniacalNitrogen,
+          result.suspendedSolids
+        );
+        
+        // Calculate pollution prediction if water quality index is available
+        if (result.waterQualityIndex) {
+          result.pollutionPrediction = predictPollutionSpread({
+            waterQualityIndex: result.waterQualityIndex.index,
+            flowVelocity: result.averageVelocity,
+            trashCount: result.trashCount,
+            temperature: result.weatherData?.temperature || 20,
+            rainfall: result.weatherData?.rainfall || 0,
+            phValue: result.phValue,
+            bodLevel: result.bodLevel,
+            ammoniacalNitrogen: result.ammoniacalNitrogen,
+            suspendedSolids: result.suspendedSolids
+          });
+        }
+      }
+      
       setAnalysisResult(result);
 
       if (result.frames && result.frames.length > 0) {
@@ -58,7 +94,7 @@ const Index = () => {
         setFrames(processedFrames);
       }
 
-      toast.success("Video analysis complete with Gemini AI!");
+      toast.success("Video analysis complete!");
     } catch (error) {
       console.error("Error processing video:", error);
       toast.error("Error processing video. Please try again.");
@@ -138,10 +174,6 @@ const Index = () => {
                     <span className="font-medium">{analysisResult.averageDepth} m</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-500">Maximum Depth:</span>
-                    <span className="font-medium">{analysisResult.maxDepth} m</span>
-                  </div>
-                  <div className="flex items-center justify-between">
                     <span className="text-gray-500">Flow Velocity:</span>
                     <span className="font-medium">{analysisResult.averageVelocity} m/s</span>
                   </div>
@@ -149,9 +181,15 @@ const Index = () => {
                     <span className="text-gray-500">Trash Items:</span>
                     <span className="font-medium">{analysisResult.trashCount}</span>
                   </div>
+                  {analysisResult.waterQualityIndex && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-500">Water Quality:</span>
+                      <span className="font-medium">{analysisResult.waterQualityIndex.label}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="mt-4 text-xs text-gray-500 italic">
-                  Note: All measurements are estimates based on computer vision analysis.
+                  Note: All measurements are estimates based on AI analysis.
                 </div>
               </div>
             )}
@@ -164,8 +202,8 @@ const Index = () => {
                   <ArrowDownWideNarrow className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                   <h2 className="text-xl font-medium text-gray-700 mb-2">Analyze River Videos</h2>
                   <p className="text-gray-500">
-                    Upload a river video to analyze its depth profile, water flow patterns, and detect trash.
-                    Our AI-powered analysis provides detailed insights into river conditions.
+                    Upload a river video to analyze depth profile, water flow, and detect pollution.
+                    Our AI-powered analysis provides detailed insights including pollution prediction.
                   </p>
                 </div>
               </div>
@@ -175,13 +213,10 @@ const Index = () => {
               <div className="bg-white rounded-lg shadow">
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
                   <TabsList className="w-full border-b">
+                    <TabsTrigger value="report">Report</TabsTrigger>
                     <TabsTrigger value="depth">Depth Analysis</TabsTrigger>
                     <TabsTrigger value="flow">Flow Analysis</TabsTrigger>
                     <TabsTrigger value="trash">Trash Detection</TabsTrigger>
-                    <TabsTrigger value="optical">Optical Flow</TabsTrigger>
-                    <TabsTrigger value="3d">3D Model</TabsTrigger>
-                    <TabsTrigger value="map">Map</TabsTrigger>
-                    <TabsTrigger value="report">Report</TabsTrigger>
                   </TabsList>
                   
                   <div className="p-4">
@@ -209,29 +244,6 @@ const Index = () => {
                       />
                     </TabsContent>
                     
-                    <TabsContent value="optical">
-                      {frames.length > 1 && currentFrameIndex > 0 && (
-                        <OpticalFlowVisualization
-                          previousFrame={frames[currentFrameIndex - 1].imageData}
-                          currentFrame={frames[currentFrameIndex].imageData}
-                          flowVectors={frames[currentFrameIndex].flowVectors!}
-                        />
-                      )}
-                    </TabsContent>
-
-                    <TabsContent value="3d">
-                      {analysisResult && (
-                        <RiverModel3D
-                          depthProfile={analysisResult.depthProfile}
-                          flowMagnitude={analysisResult.flowMagnitude}
-                        />
-                      )}
-                    </TabsContent>
-
-                    <TabsContent value="map">
-                      <MapView />
-                    </TabsContent>
-
                     <TabsContent value="report">
                       <SatelliteReport 
                         data={{
@@ -241,10 +253,13 @@ const Index = () => {
                           trashCount: analysisResult.trashCount,
                           trashCategories: analysisResult.trashCategories,
                           environmentalImpact: analysisResult.environmentalImpact,
-                          phValue: analysisResult.phValue || 7.2, // Default value if not provided
-                          bodLevel: analysisResult.bodLevel || 2.5, // Default value if not provided
-                          ammoniacalNitrogen: analysisResult.ammoniacalNitrogen || 0.25, // Default value if not provided
-                          suspendedSolids: analysisResult.suspendedSolids || 35 // Default value if not provided
+                          phValue: analysisResult.phValue || 7.2,
+                          bodLevel: analysisResult.bodLevel || 2.5,
+                          ammoniacalNitrogen: analysisResult.ammoniacalNitrogen || 0.25,
+                          suspendedSolids: analysisResult.suspendedSolids || 35,
+                          weatherData: analysisResult.weatherData,
+                          waterQualityIndex: analysisResult.waterQualityIndex,
+                          pollutionPrediction: analysisResult.pollutionPrediction
                         }}
                       />
                     </TabsContent>
@@ -257,7 +272,7 @@ const Index = () => {
         
         <div className="mt-12 text-center">
           <p className="text-sm text-gray-500">
-            River Vision Insights Explorer uses advanced computer vision techniques to analyze river videos.
+            River Vision Insights Explorer uses advanced AI techniques to analyze river videos.
             <br />For research and educational purposes only. Actual measurements may vary from estimates.
           </p>
         </div>
