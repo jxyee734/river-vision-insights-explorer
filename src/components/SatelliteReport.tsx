@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useGPS } from '@/hooks/useGPS';
 import { Badge } from '@/components/ui/badge';
-import { FileChartColumn, Map, MapPin, Droplet, Water, TestTubes } from 'lucide-react';
+import { FileChartColumn, Map, MapPin, Droplet, TestTubes } from 'lucide-react';
 
 interface SatelliteReportProps {
   data: {
