@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { toast } from "sonner";
+import { useLocation, useNavigate } from "react-router-dom";
 import UploadSection from '@/components/UploadSection';
 import DepthVisualization from '@/components/DepthVisualization';
 import FlowAnalysis from '@/components/FlowAnalysis';
@@ -11,6 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowDownWideNarrow, CloudLightning, FileVideo, Map as MapIcon } from "lucide-react";
 import { AnalysisResult } from '@/types/analysis';
 import SatelliteReport from '@/components/SatelliteReport';
+import MapView from '@/components/MapView';
+import Navigation from '@/components/Navigation';
 import { useGPS } from '@/hooks/useGPS';
 import { calculateWaterQualityIndex, fetchWeatherData, predictPollutionSpread } from '@/utils/predictionModel';
 
@@ -29,12 +32,30 @@ declare global {
 }
 
 const Index = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const searchParams = new URLSearchParams(location.search);
+  const tabParam = searchParams.get('tab');
+  
   const [isProcessing, setIsProcessing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
-  const [activeTab, setActiveTab] = useState('report');
+  const [activeTab, setActiveTab] = useState(tabParam || 'report');
   const [processingStage, setProcessingStage] = useState(0);
   const [frames, setFrames] = useState<Frame[]>([]);
-  const { location } = useGPS();
+  const { location: gpsLocation } = useGPS();
+
+  // Update URL when tab changes
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    navigate(`/?tab=${value}`, { replace: true });
+  };
+
+  // Sync with URL params when they change
+  useEffect(() => {
+    if (tabParam && tabParam !== activeTab) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
 
   const handleVideoUpload = async (file: File) => {
     try {
@@ -50,9 +71,9 @@ const Index = () => {
       const result = await analyzeVideo(file);
       
       // Fetch weather data if location is available
-      if (location) {
+      if (gpsLocation) {
         try {
-          const weatherData = await fetchWeatherData(location.latitude, location.longitude);
+          const weatherData = await fetchWeatherData(gpsLocation.latitude, gpsLocation.longitude);
           result.weatherData = weatherData;
         } catch (error) {
           console.error("Error fetching weather data:", error);
@@ -141,6 +162,7 @@ const Index = () => {
               <p className="text-sm text-gray-500">Advanced river analysis and monitoring</p>
             </div>
           </div>
+          <Navigation />
         </div>
       </header>
 
@@ -196,7 +218,7 @@ const Index = () => {
           </div>
 
           <div className="lg:col-span-2">
-            {!analysisResult && (
+            {!analysisResult && tabParam !== 'map' ? (
               <div className="h-full flex items-center justify-center bg-white rounded-lg shadow p-8 border border-dashed border-gray-200">
                 <div className="text-center max-w-md">
                   <ArrowDownWideNarrow className="h-16 w-16 text-gray-300 mx-auto mb-4" />
@@ -207,61 +229,68 @@ const Index = () => {
                   </p>
                 </div>
               </div>
-            )}
-
-            {analysisResult && (
+            ) : !analysisResult && tabParam === 'map' ? (
+              <MapView />
+            ) : (
               <div className="bg-white rounded-lg shadow">
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <Tabs value={activeTab} onValueChange={handleTabChange}>
                   <TabsList className="w-full border-b">
                     <TabsTrigger value="report">Report</TabsTrigger>
                     <TabsTrigger value="depth">Depth Analysis</TabsTrigger>
                     <TabsTrigger value="flow">Flow Analysis</TabsTrigger>
                     <TabsTrigger value="trash">Trash Detection</TabsTrigger>
+                    <TabsTrigger value="map">Map View</TabsTrigger>
                   </TabsList>
                   
                   <div className="p-4">
                     <TabsContent value="depth">
                       <DepthVisualization 
-                        depthProfile={analysisResult.depthProfile}
-                        averageDepth={analysisResult.averageDepth}
-                        maxDepth={analysisResult.maxDepth}
+                        depthProfile={analysisResult?.depthProfile || []}
+                        averageDepth={analysisResult?.averageDepth || 0}
+                        maxDepth={analysisResult?.maxDepth || 0}
                       />
                     </TabsContent>
                     
                     <TabsContent value="flow">
                       <FlowAnalysis 
-                        averageVelocity={analysisResult.averageVelocity}
-                        flowMagnitude={analysisResult.flowMagnitude}
+                        averageVelocity={analysisResult?.averageVelocity || 0}
+                        flowMagnitude={analysisResult?.flowMagnitude || 0}
                       />
                     </TabsContent>
                     
                     <TabsContent value="trash">
                       <TrashDetection 
-                        trashCount={analysisResult.trashCount}
-                        trashCategories={analysisResult.trashCategories}
-                        environmentalImpact={analysisResult.environmentalImpact}
-                        trashImages={analysisResult.trashDetectionImages}
+                        trashCount={analysisResult?.trashCount || 0}
+                        trashCategories={analysisResult?.trashCategories || []}
+                        environmentalImpact={analysisResult?.environmentalImpact || ''}
+                        trashImages={analysisResult?.trashDetectionImages || []}
                       />
                     </TabsContent>
                     
                     <TabsContent value="report">
-                      <SatelliteReport 
-                        data={{
-                          averageDepth: analysisResult.averageDepth,
-                          maxDepth: analysisResult.maxDepth,
-                          averageVelocity: analysisResult.averageVelocity,
-                          trashCount: analysisResult.trashCount,
-                          trashCategories: analysisResult.trashCategories,
-                          environmentalImpact: analysisResult.environmentalImpact,
-                          phValue: analysisResult.phValue || 7.2,
-                          bodLevel: analysisResult.bodLevel || 2.5,
-                          ammoniacalNitrogen: analysisResult.ammoniacalNitrogen || 0.25,
-                          suspendedSolids: analysisResult.suspendedSolids || 35,
-                          weatherData: analysisResult.weatherData,
-                          waterQualityIndex: analysisResult.waterQualityIndex,
-                          pollutionPrediction: analysisResult.pollutionPrediction
-                        }}
-                      />
+                      {analysisResult && (
+                        <SatelliteReport 
+                          data={{
+                            averageDepth: analysisResult.averageDepth,
+                            maxDepth: analysisResult.maxDepth,
+                            averageVelocity: analysisResult.averageVelocity,
+                            trashCount: analysisResult.trashCount,
+                            trashCategories: analysisResult.trashCategories,
+                            environmentalImpact: analysisResult.environmentalImpact,
+                            phValue: analysisResult.phValue || 7.2,
+                            bodLevel: analysisResult.bodLevel || 2.5,
+                            ammoniacalNitrogen: analysisResult.ammoniacalNitrogen || 0.25,
+                            suspendedSolids: analysisResult.suspendedSolids || 35,
+                            weatherData: analysisResult.weatherData,
+                            waterQualityIndex: analysisResult.waterQualityIndex,
+                            pollutionPrediction: analysisResult.pollutionPrediction
+                          }}
+                        />
+                      )}
+                    </TabsContent>
+                    
+                    <TabsContent value="map">
+                      <MapView />
                     </TabsContent>
                   </div>
                 </Tabs>
