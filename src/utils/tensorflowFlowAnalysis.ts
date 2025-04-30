@@ -36,7 +36,8 @@ export async function calculateOpticalFlow(
   // Apply sobel filters to get gradients
   // Fix: Explicitly cast tensors to ensure correct types for conv2d
   const dx = tf.tidy(() => {
-    const reshapedSobelX = sobelX.reshape([3, 3, 1, 1]);
+    // Reshape and cast sobelX to Tensor4D for conv2d
+    const reshapedSobelX = sobelX.reshape([3, 3, 1, 1]) as tf.Tensor4D;
     // Cast prevGray to Tensor3D explicitly to satisfy TypeScript
     return tf.conv2d(
       prevGray as tf.Tensor3D, 
@@ -47,7 +48,8 @@ export async function calculateOpticalFlow(
   });
   
   const dy = tf.tidy(() => {
-    const reshapedSobelY = sobelY.reshape([3, 3, 1, 1]);
+    // Reshape and cast sobelY to Tensor4D for conv2d
+    const reshapedSobelY = sobelY.reshape([3, 3, 1, 1]) as tf.Tensor4D;
     // Cast prevGray to Tensor3D explicitly to satisfy TypeScript
     return tf.conv2d(
       prevGray as tf.Tensor3D,
