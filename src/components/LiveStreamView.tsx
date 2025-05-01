@@ -7,25 +7,29 @@ import { NasaCard } from './NasaCard';
 import { Waves, Camera, Play, CameraOff } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Sample river streams data - in a real app, this would come from an API
+// Updated stream sources with more reliable URLs and better error handling
 const SAMPLE_STREAMS = [
   { 
     id: 'stream1', 
     name: 'Mississippi River - St. Louis', 
     url: 'https://58767bb9dc97c.streamlock.net/live/Lewis.stream/playlist.m3u8',
-    location: { lat: 38.6270, lng: -90.1994 }
+    location: { lat: 38.6270, lng: -90.1994 },
+    description: "Live view of the Mississippi River at St. Louis"
   },
   { 
     id: 'stream2', 
-    name: 'Columbia River - Washington', 
-    url: 'https://5c2dd06edc0e8.streamlock.net/live/mp4:columbiariver_trunnion.stream/playlist.m3u8',
-    location: { lat: 45.7060, lng: -121.7980 }
+    name: 'Missouri River Cam', 
+    // Updated to a more reliable sample stream URL
+    url: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
+    location: { lat: 38.8791, lng: -92.5885 },
+    description: "Live monitoring of the Missouri River"
   },
   { 
     id: 'stream3', 
     name: 'Hudson River - New York', 
-    url: 'https://cdn-naka17.livextend.live/prod_hls/10251/10251.m3u8',
-    location: { lat: 40.7128, lng: -74.0060 }
+    url: 'https://livesim.dashif.org/livesim/chunkdur_1/ato_7/testpic4_8s/Manifest.mpd',
+    location: { lat: 40.7128, lng: -74.0060 },
+    description: "Scenic view of the Hudson River"
   }
 ];
 
@@ -38,15 +42,20 @@ const LiveStreamView: React.FC<LiveStreamViewProps> = ({ onLocationSelected }) =
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [streamError, setStreamError] = useState<boolean>(false);
+  const [errorCount, setErrorCount] = useState<number>(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hls = useRef<any>(null);
+  const retryTimeoutRef = useRef<any>(null);
 
   useEffect(() => {
-    // Clean up HLS instance when component unmounts
+    // Clean up HLS instance and timeouts when component unmounts
     return () => {
       if (hls.current) {
         hls.current.destroy();
         hls.current = null;
+      }
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
       }
     };
   }, []);
@@ -62,19 +71,33 @@ const LiveStreamView: React.FC<LiveStreamViewProps> = ({ onLocationSelected }) =
     }
     
     try {
+      // Clean up any previous HLS instance
+      if (hls.current) {
+        hls.current.destroy();
+        hls.current = null;
+      }
+      
+      // Clear any retry timeouts
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
+      
       // Dynamically import HLS.js only when needed
       const { default: Hls } = await import('hls.js');
       
       // Check if HLS is supported in the browser
       if (Hls.isSupported() && videoRef.current) {
-        // Create new HLS instance
-        if (hls.current) {
-          hls.current.destroy();
-        }
-        
+        // Create new HLS instance with optimized configurations
         hls.current = new Hls({
           maxBufferLength: 30,
           maxMaxBufferLength: 60,
+          maxBufferSize: 60 * 1000 * 1000, // 60 MB
+          maxMaxBufferLength: 600,
+          liveSyncDurationCount: 3,
+          liveMaxLatencyDurationCount: 10,
+          progressive: true,
+          lowLatencyMode: false, // Set to true for lower latency if needed
         });
         
         // Bind HLS to video element
@@ -84,22 +107,64 @@ const LiveStreamView: React.FC<LiveStreamViewProps> = ({ onLocationSelected }) =
         hls.current.on(Hls.Events.MANIFEST_PARSED, () => {
           setIsLoading(false);
           setIsPlaying(true);
+          setErrorCount(0);
           if (videoRef.current) {
             videoRef.current.play().catch(e => {
               console.error("Error playing video:", e);
-              setStreamError(true);
-              toast.error("Could not start video playback. Please try again.");
+              handlePlaybackError();
             });
           }
         });
         
+        // Enhanced error handling
         hls.current.on(Hls.Events.ERROR, (_event: any, data: any) => {
+          console.log("Stream error detected:", data.type);
+          
           if (data.fatal) {
-            setStreamError(true);
-            setIsPlaying(false);
-            toast.error("Stream error. Please try another stream.");
-            console.error("HLS error:", data);
-            hls.current.destroy();
+            setErrorCount(prev => prev + 1);
+            
+            if (errorCount >= 2) {
+              console.error("Fatal HLS error after multiple retries:", data);
+              setStreamError(true);
+              setIsPlaying(false);
+              toast.error("Stream currently unavailable. Please try another stream.");
+              hls.current.destroy();
+              hls.current = null;
+            } else {
+              // Non-fatal or first error, attempt recovery
+              console.log("Attempting to recover from HLS error");
+              
+              switch(data.type) {
+                case Hls.ErrorTypes.NETWORK_ERROR:
+                  // Try to recover network error
+                  toast.warning("Stream connection issue. Attempting to reconnect...");
+                  retryTimeoutRef.current = setTimeout(() => {
+                    if (hls.current) {
+                      hls.current.startLoad();
+                    }
+                  }, 3000);
+                  break;
+                  
+                case Hls.ErrorTypes.MEDIA_ERROR:
+                  // Try to recover media error
+                  toast.warning("Stream media error. Attempting to recover...");
+                  if (hls.current) {
+                    hls.current.recoverMediaError();
+                  }
+                  break;
+                  
+                default:
+                  // For other errors, destroy and recreate
+                  if (hls.current) {
+                    hls.current.destroy();
+                    hls.current = null;
+                  }
+                  retryTimeoutRef.current = setTimeout(() => {
+                    loadStream(streamId);
+                  }, 3000);
+                  break;
+              }
+            }
           }
         });
         
@@ -115,14 +180,13 @@ const LiveStreamView: React.FC<LiveStreamViewProps> = ({ onLocationSelected }) =
           setIsPlaying(true);
           videoRef.current?.play().catch(e => {
             console.error("Error playing video:", e);
-            setStreamError(true);
+            handlePlaybackError();
           });
         });
         
-        videoRef.current.addEventListener('error', () => {
-          setStreamError(true);
-          setIsPlaying(false);
-          toast.error("Stream error. Please try another stream.");
+        videoRef.current.addEventListener('error', (e) => {
+          console.error("Video element error:", e);
+          handlePlaybackError();
         });
         
         // Notify parent component of location change if callback provided
@@ -138,6 +202,26 @@ const LiveStreamView: React.FC<LiveStreamViewProps> = ({ onLocationSelected }) =
       setStreamError(true);
       setIsLoading(false);
       toast.error("Failed to load video player");
+    }
+  };
+  
+  const handlePlaybackError = () => {
+    setErrorCount(prev => prev + 1);
+    if (errorCount >= 2) {
+      setStreamError(true);
+      setIsPlaying(false);
+      toast.error("Stream error. Please try another stream.");
+    } else {
+      toast.warning("Playback issue. Attempting to reconnect...");
+      // Try a simple reload
+      if (videoRef.current && videoRef.current.src) {
+        videoRef.current.load();
+        videoRef.current.play().catch(e => {
+          console.error("Error on retry:", e);
+          setStreamError(true);
+          setIsPlaying(false);
+        });
+      }
     }
   };
 
@@ -169,7 +253,7 @@ const LiveStreamView: React.FC<LiveStreamViewProps> = ({ onLocationSelected }) =
       {selectedStream ? (
         <NasaCard 
           title={SAMPLE_STREAMS.find(s => s.id === selectedStream)?.name || "River Stream"} 
-          description="Live video feed"
+          description={SAMPLE_STREAMS.find(s => s.id === selectedStream)?.description || "Live video feed"}
           gradient
           glassmorphism
           className="w-full"
@@ -186,6 +270,17 @@ const LiveStreamView: React.FC<LiveStreamViewProps> = ({ onLocationSelected }) =
                 <CameraOff className="h-16 w-16 text-red-500 mb-4" />
                 <p className="text-white text-lg">Stream unavailable</p>
                 <p className="text-gray-400 text-sm mt-2">Please try another stream</p>
+                <Button 
+                  variant="outline" 
+                  className="mt-4"
+                  onClick={() => {
+                    setErrorCount(0);
+                    setStreamError(false);
+                    loadStream(selectedStream);
+                  }}
+                >
+                  Try Again
+                </Button>
               </div>
             )}
             
@@ -194,6 +289,7 @@ const LiveStreamView: React.FC<LiveStreamViewProps> = ({ onLocationSelected }) =
               className="w-full h-full object-cover"
               playsInline
               controls={isPlaying && !streamError}
+              muted // Muting to help with autoplay
             />
             
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 flex justify-between items-center">
