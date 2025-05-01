@@ -9,7 +9,7 @@ import TrashDetection from '@/components/TrashDetection';
 import ProcessingVisualization from '@/components/ProcessingVisualization';
 import { analyzeVideo } from '@/utils/videoAnalysis';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowDownWideNarrow, CloudLightning, FileVideo, Map as MapIcon, Wave } from "lucide-react";
+import { ArrowDownWideNarrow, CloudLightning, FileVideo, Map as MapIcon, Waves } from "lucide-react";
 import { AnalysisResult } from '@/types/analysis';
 import SatelliteReport from '@/components/SatelliteReport';
 import MapView from '@/components/MapView';
