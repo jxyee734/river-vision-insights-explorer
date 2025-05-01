@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/navigation-menu";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
-import { Rocket, Satellite, Earth, Database, BarChart, Layers, Search, Monitor } from 'lucide-react';
+import { Rocket, Satellite, Earth, Database, BarChart, Layers, Search, Monitor, Stream } from 'lucide-react';
 
 export function Navigation() {
   return (
@@ -84,6 +84,13 @@ export function Navigation() {
               <Link to="/?tab=trash" className="group flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md hover:bg-muted/80 transition-colors hover-lift">
                 <Search className="h-4 w-4 text-primary group-hover:text-primary" />
                 Pollution Detection
+              </Link>
+            </NavigationMenuItem>
+
+            <NavigationMenuItem>
+              <Link to="/?tab=streams" className="group flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md hover:bg-muted/80 transition-colors hover-lift">
+                <Stream className="h-4 w-4 text-primary group-hover:text-primary" />
+                Live Streams
               </Link>
             </NavigationMenuItem>
           </NavigationMenuList>
