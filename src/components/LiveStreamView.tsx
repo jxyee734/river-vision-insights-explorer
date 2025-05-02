@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,28 +7,42 @@ import { NasaCard } from './NasaCard';
 import { Waves, Camera, Play, CameraOff } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Updated stream sources with more reliable working URLs
+// Updated stream sources with YouTube live streams
 const SAMPLE_STREAMS = [
   { 
     id: 'stream1', 
-    name: 'NASA Live Stream', 
-    url: 'https://manifest.googlevideo.com/api/manifest/hls_variant/expire/1714776095/ei/z2dOZZDsIOLGx_APwI-p-AQ/ip/35.230.176.92/id/21X5lGlDOfg.4/source/yt_live_broadcast/requiressl/yes/xpc/EgVo2aDSNQ%3D%3D/hfr/1/playlist_duration/30/manifest_duration/30/maxh/4320/maudio/1/siu/1/spc/UWF9fwl4n7UDDSjLLK1CUcTmkLI2ZTpccbICxCCuCB59aP8AaIDIMREm5lg4oc3C/vprv/1/go/1/pacing/0/nvgoi/1/keepalive/yes/fexp/51141543/dover/11/itag/0/playlist_type/DVR/sparams/expire%2Cei%2Cip%2Cid%2Csource%2Crequiressl%2Cxpc%2Chfr%2Cplaylist_duration%2Cmanifest_duration%2Cmaxh%2Cmaudio%2Csiu%2Cspc%2Cvprv%2Cgo%2Citag%2Cplaylist_type/sig/AJfQdSswRAIgG0MghamDVqIEImUfPqBUty5JSfKwwdQh7uDqUaDImUsCIGcOV1nTkDp9fFOB7usGlfMO-eGTqFT1f2NQY0yumhKp/file/index.m3u8',
-    location: { lat: 38.8977, lng: -77.0365 },
-    description: "NASA Live: Official Stream of NASA TV"
+    name: 'River Stream 1', 
+    url: 'https://manifest.googlevideo.com/api/manifest/hls_variant/expire/1715192481/ei/8ZVRZYOAD5iP_9EPiuyL6AY/ip/34.86.133.146/id/WUqQdNAUC1c.1/source/yt_live_broadcast/requiressl/yes/tx/24788799/txs/24788797%2C24788798%2C24788799%2C24788800%2C24788801/hfr/1/playlist_duration/30/manifest_duration/30/maxh/4320/maudio/1/siu/1/spc/UWF9f1l0R4u1lCNfP2KX-4lZTklnVtSP4RuqTH1KvHa7rP8yBAe4FLsvwxxmBxaM9Z0G/vprv/1/go/1/pacing/0/nvgoi/1/keepalive/yes/fexp/51141542/dover/11/itag/0/playlist_type/DVR/sparams/expire%2Cei%2Cip%2Cid%2Csource%2Crequiressl%2Ctx%2Ctxs%2Chfr%2Cplaylist_duration%2Cmanifest_duration%2Cmaxh%2Cmaudio%2Csiu%2Cspc%2Cvprv%2Cgo%2Citag%2Cplaylist_type/sig/AJfQdSswRQIhAN0OArBRVbRGafdx6fxlWbVa5-rfM1Hzch1sqGvzc-HDAiACU6TwK2VJBWx4_M7P9aBDYfNJo8TSlkZ1f3usLHOBdQ%3D%3D/file/index.m3u8',
+    location: { lat: 40.7128, lng: -74.0060 },
+    description: "Live stream of flowing river"
   },
   { 
     id: 'stream2', 
-    name: 'CNBC Live', 
-    url: 'https://manifest.googlevideo.com/api/manifest/hls_variant/expire/1714776146/ei/AmhOZYvvNuukx_APgJiy6A4/ip/35.230.176.92/id/9NyxcX3rhQs.2/source/yt_live_broadcast/requiressl/yes/xpc/EgVo2aDSNQ%3D%3D/tx/24788115/txs/24788114%2C24788115%2C24788116%2C24788117%2C24788118%2C24788119%2C24788120/hfr/1/playlist_duration/30/manifest_duration/30/maxh/4320/maudio/1/siu/1/spc/UWF9f-KmLERzjBuvvu2cv0nB0E50VO-8KwkVmH_eJjP1sbxs3bEtvvaAB-w/vprv/1/go/1/pacing/0/nvgoi/1/keepalive/yes/fexp/51141542/dover/11/itag/0/playlist_type/DVR/sparams/expire%2Cei%2Cip%2Cid%2Csource%2Crequiressl%2Cxpc%2Ctx%2Ctxs%2Chfr%2Cplaylist_duration%2Cmanifest_duration%2Cmaxh%2Cmaudio%2Csiu%2Cspc%2Cvprv%2Cgo%2Citag%2Cplaylist_type/sig/AJfQdSswRgIhAJYmQZiQZBWuqFufgyLfI9-sJWmEfR_xVqFbmQWBomQDAiEAvfurgjtQWQiRvzXu48wl73DLQd9RGPtkisD4BSWijSQ%3D/file/index.m3u8',
-    location: { lat: 40.7128, lng: -74.0060 },
-    description: "CNBC Live: Latest market and business news"
+    name: 'River Stream 2', 
+    url: 'https://manifest.googlevideo.com/api/manifest/hls_variant/expire/1715192505/ei/CZZRZZ76Eqyu_9EPx9-nwAk/ip/34.86.133.146/id/7B8ArsmXPyk.2/source/yt_live_broadcast/requiressl/yes/tx/51129727/txs/51129726%2C51129727%2C51129728%2C51129729%2C51129730%2C51129731/hfr/1/playlist_duration/30/manifest_duration/30/maxh/4320/maudio/1/siu/1/spc/UWF9f5QqPFv_6HRpueUFgC44Oab0hPXKUNvQGGp9jJvPrp8ZaLDMyUlIbrc/vprv/1/go/1/pacing/0/nvgoi/1/keepalive/yes/fexp/51141542/dover/11/itag/0/playlist_type/DVR/sparams/expire%2Cei%2Cip%2Cid%2Csource%2Crequiressl%2Ctx%2Ctxs%2Chfr%2Cplaylist_duration%2Cmanifest_duration%2Cmaxh%2Cmaudio%2Csiu%2Cspc%2Cvprv%2Cgo%2Citag%2Cplaylist_type/sig/AJfQdSswRgIhAKH9NZECSm_OzjAIsertyYLUfg7-ZZMB6CeOGQdl8F-SAiEA7oVvm0Yl_h3QWDkty97fICCda2EQC1ZN-iTbowHue7w%3D/file/index.m3u8',
+    location: { lat: 35.6895, lng: -139.6917 },
+    description: "Live monitoring of water flow"
   },
   { 
     id: 'stream3', 
-    name: 'Earth from Space (ISS)', 
-    url: 'https://manifest.googlevideo.com/api/manifest/hls_variant/expire/1714776243/ei/Y2hOZfCEGa2oobIPsYaOiAY/ip/35.230.176.92/id/86YLFOog4GM.3/source/yt_live_broadcast/requiressl/yes/xpc/EgVo2aDSNQ%3D%3D/hfr/1/playlist_duration/30/manifest_duration/30/maxh/4320/maudio/1/siu/1/spc/UWF9f25oyhRa0XpHHYgyI7GRwZ0YE4sbreNnmggse46AhzNUwwy2MoC7C2c/vprv/1/go/1/pacing/0/nvgoi/1/keepalive/yes/fexp/51141541/dover/11/itag/0/playlist_type/DVR/sparams/expire%2Cei%2Cip%2Cid%2Csource%2Crequiressl%2Cxpc%2Chfr%2Cplaylist_duration%2Cmanifest_duration%2Cmaxh%2Cmaudio%2Csiu%2Cspc%2Cvprv%2Cgo%2Citag%2Cplaylist_type/sig/AJfQdSswRAIgQvk2Zzq785OdJsyJ6nj5MvVQuqwnF_fPmAoQaTbDvnsCIB3p66-wBb-Hde2KfWH1N7IvPNAE7gJtPJZUBCwP0F5D/file/index.m3u8',
-    location: { lat: 0, lng: 0 },
-    description: "Live views of Earth from the International Space Station"
+    name: 'River Stream 3', 
+    url: 'https://manifest.googlevideo.com/api/manifest/hls_variant/expire/1715192531/ei/I5ZRZZqRLZCu_9EP6fiB0AE/ip/34.86.133.146/id/M8_wWiCs8CM.1/source/yt_live_broadcast/requiressl/yes/tx/24788799/txs/24788797%2C24788798%2C24788799%2C24788800%2C24788801/hfr/1/playlist_duration/30/manifest_duration/30/maxh/4320/maudio/1/siu/1/spc/UWF9f0xsIAc3HdI_hyvWuzsjd-P8fmMUuc455MU2oH1OJr07pTnIhiQvkxU/vprv/1/go/1/pacing/0/nvgoi/1/keepalive/yes/fexp/51141542/dover/11/itag/0/playlist_type/DVR/sparams/expire%2Cei%2Cip%2Cid%2Csource%2Crequiressl%2Ctx%2Ctxs%2Chfr%2Cplaylist_duration%2Cmanifest_duration%2Cmaxh%2Cmaudio%2Csiu%2Cspc%2Cvprv%2Cgo%2Citag%2Cplaylist_type/sig/AJfQdSswRgIhAP_JpqNuXhgguxSfXOX1gU8yHJWPrRiDNuu1FkXyQZc7AiEA0xrUHY4EjSkQPEB3LXOmJJ1I7Q-FLYQSLxhRVVufqjY%3D/file/index.m3u8',
+    location: { lat: 51.5074, lng: -0.1278 },
+    description: "River monitoring and water quality analysis"
+  },
+  { 
+    id: 'stream4', 
+    name: 'River Stream 4', 
+    url: 'https://manifest.googlevideo.com/api/manifest/hls_variant/expire/1715192558/ei/PpZRZbjZKJXE_9EPvPeb6A0/ip/34.86.133.146/id/euzaT88tzOM.1/source/yt_live_broadcast/requiressl/yes/tx/24814869/txs/24814869%2C24814870%2C24814871%2C24814872%2C24814873%2C24814874/hfr/1/playlist_duration/30/manifest_duration/30/maxh/4320/maudio/1/siu/1/spc/UWF9f_YzNyW3UPrJfo7P56mCsIeEZHUNibOSqsJWI1q8EH-6QeeQgx5JYLk/vprv/1/go/1/pacing/0/nvgoi/1/keepalive/yes/fexp/51141542/dover/11/itag/0/playlist_type/DVR/sparams/expire%2Cei%2Cip%2Cid%2Csource%2Crequiressl%2Ctx%2Ctxs%2Chfr%2Cplaylist_duration%2Cmanifest_duration%2Cmaxh%2Cmaudio%2Csiu%2Cspc%2Cvprv%2Cgo%2Citag%2Cplaylist_type/sig/AJfQdSswRQIgOxd_98TAJZWMEbG6PfzK1AC1A9NLM0jzWcz3PCA7fs0CIQCSMLgOZ2pgt22fFo0zLsYfiSKvzxRxsp6gyeVYNIPpBw%3D%3D/file/index.m3u8',
+    location: { lat: 48.8566, lng: 2.3522 },
+    description: "Live monitoring of water levels and flow rates"
+  },
+  { 
+    id: 'stream5', 
+    name: 'River Stream 5', 
+    url: 'https://manifest.googlevideo.com/api/manifest/hls_variant/expire/1715192585/ei/WZZRZcfPM5iq_9EPwqWA2AI/ip/34.86.133.146/id/4YFHDjig1hc.2/source/yt_live_broadcast/requiressl/yes/tx/24827033/txs/24827033%2C24827034/hfr/1/playlist_duration/30/manifest_duration/30/maxh/4320/maudio/1/siu/1/spc/UWF9f-ukkRPSsleOkxepeM3qg-yTksmCwI6GkdIui4H8KQ6a3lrx_lggaVn1-CXRxhcz/vprv/1/go/1/pacing/0/nvgoi/1/keepalive/yes/fexp/51141542/dover/11/itag/0/playlist_type/DVR/sparams/expire%2Cei%2Cip%2Cid%2Csource%2Crequiressl%2Ctx%2Ctxs%2Chfr%2Cplaylist_duration%2Cmanifest_duration%2Cmaxh%2Cmaudio%2Csiu%2Cspc%2Cvprv%2Cgo%2Citag%2Cplaylist_type/sig/AJfQdSswRAIgQIbdUfqGB3erTg60muRaRGxpuIlJ9eAwRMKxwreUXosCIG-gBfZLK-Aw5FY9mpMmnr1digMRuYQQSQsyaAvJqlDj/file/index.m3u8',
+    location: { lat: 37.7749, lng: -122.4194 },
+    description: "Real-time environmental monitoring of river conditions"
   }
 ];
 
