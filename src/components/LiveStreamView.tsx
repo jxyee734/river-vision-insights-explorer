@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -5,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { NasaCard } from './NasaCard';
 import { Waves, Camera, Play, CameraOff } from 'lucide-react';
 import { toast } from 'sonner';
+import LivestreamAnalysisPanel from './LivestreamAnalysisPanel';
 
 // Updated stream sources with YouTube embeds provided by the user
 const SAMPLE_STREAMS = [
@@ -51,6 +53,7 @@ const LiveStreamView: React.FC<LiveStreamViewProps> = ({ onLocationSelected }) =
   const videoRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const retryTimeoutRef = useRef<any>(null);
+  const [showAnalysisPanel, setShowAnalysisPanel] = useState<boolean>(false);
 
   useEffect(() => {
     // Clean up timeouts when component unmounts
@@ -114,8 +117,15 @@ const LiveStreamView: React.FC<LiveStreamViewProps> = ({ onLocationSelected }) =
 
   const handleStreamChange = (streamId: string) => {
     setSelectedStream(streamId);
+    setShowAnalysisPanel(false); // Reset analysis panel when changing streams
     loadStream(streamId);
   };
+
+  const toggleAnalysisPanel = () => {
+    setShowAnalysisPanel(prev => !prev);
+  };
+
+  const currentStream = SAMPLE_STREAMS.find(s => s.id === selectedStream);
 
   return (
     <div className="space-y-4">
@@ -138,69 +148,93 @@ const LiveStreamView: React.FC<LiveStreamViewProps> = ({ onLocationSelected }) =
       </div>
       
       {selectedStream ? (
-        <NasaCard 
-          title={SAMPLE_STREAMS.find(s => s.id === selectedStream)?.name || "River Stream"} 
-          description={SAMPLE_STREAMS.find(s => s.id === selectedStream)?.description || "Live video feed"}
-          gradient
-          glassmorphism
-          className="w-full"
-        >
-          <div className="relative aspect-video bg-black/50 rounded-md overflow-hidden">
-            {isLoading && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-              </div>
-            )}
-            
-            {streamError && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70">
-                <CameraOff className="h-16 w-16 text-red-500 mb-4" />
-                <p className="text-white text-lg">Stream unavailable</p>
-                <p className="text-gray-400 text-sm mt-2">Please try another stream</p>
-                <Button 
-                  variant="outline" 
-                  className="mt-4"
-                  onClick={() => {
-                    setErrorCount(0);
-                    setStreamError(false);
-                    loadStream(selectedStream);
-                  }}
-                >
-                  Try Again
-                </Button>
-              </div>
-            )}
-            
-            {selectedStream && !streamError && (
-              <iframe
-                ref={iframeRef}
-                className="w-full h-full"
-                src={SAMPLE_STREAMS.find(s => s.id === selectedStream)?.url}
-                title={SAMPLE_STREAMS.find(s => s.id === selectedStream)?.name || "Live Stream"}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-                onError={handlePlaybackError}
-              ></iframe>
-            )}
-            
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 flex justify-between items-center">
-              <div className="flex items-center space-x-2">
-                <div className={`w-2 h-2 rounded-full ${isPlaying && !streamError ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                <span className="text-white text-sm">
-                  {isPlaying && !streamError ? 'Live' : 'Stream Not Active'}
-                </span>
-              </div>
-              <div className="text-xs text-gray-300">
-                {isPlaying && !streamError && "Real-time water flow monitoring"}
+        <div className="space-y-4">
+          <NasaCard 
+            title={currentStream?.name || "River Stream"} 
+            description={currentStream?.description || "Live video feed"}
+            gradient
+            glassmorphism
+            className="w-full"
+          >
+            <div className="relative aspect-video bg-black/50 rounded-md overflow-hidden">
+              {isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                </div>
+              )}
+              
+              {streamError && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70">
+                  <CameraOff className="h-16 w-16 text-red-500 mb-4" />
+                  <p className="text-white text-lg">Stream unavailable</p>
+                  <p className="text-gray-400 text-sm mt-2">Please try another stream</p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                    onClick={() => {
+                      setErrorCount(0);
+                      setStreamError(false);
+                      loadStream(selectedStream);
+                    }}
+                  >
+                    Try Again
+                  </Button>
+                </div>
+              )}
+              
+              {selectedStream && !streamError && (
+                <iframe
+                  ref={iframeRef}
+                  className="w-full h-full"
+                  src={currentStream?.url}
+                  title={currentStream?.name || "Live Stream"}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  onError={handlePlaybackError}
+                ></iframe>
+              )}
+              
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 flex justify-between items-center">
+                <div className="flex items-center space-x-2">
+                  <div className={`w-2 h-2 rounded-full ${isPlaying && !streamError ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                  <span className="text-white text-sm">
+                    {isPlaying && !streamError ? 'Live' : 'Stream Not Active'}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="text-xs text-gray-300">
+                    {isPlaying && !streamError && "Real-time water flow monitoring"}
+                  </div>
+                  {isPlaying && !streamError && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-xs text-white bg-black/50 border-white/30 hover:bg-black/70"
+                      onClick={toggleAnalysisPanel}
+                    >
+                      {showAnalysisPanel ? "Hide Analysis" : "Analyze Stream"}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-          
-          <div className="mt-4 text-xs text-gray-400">
-            <p>These live streams provide real-time monitoring of river conditions. The video feeds may be temporarily unavailable due to weather conditions or maintenance.</p>
-          </div>
-        </NasaCard>
+            
+            {isPlaying && !streamError && showAnalysisPanel && (
+              <div className="mt-4 p-4 border border-border/30 rounded-lg bg-card/10">
+                <LivestreamAnalysisPanel 
+                  iframeRef={iframeRef}
+                  isStreamActive={isPlaying && !streamError}
+                  streamName={currentStream?.name || ""}
+                />
+              </div>
+            )}
+            
+            <div className="mt-4 text-xs text-gray-400">
+              <p>These live streams provide real-time monitoring of river conditions. The video feeds may be temporarily unavailable due to weather conditions or maintenance.</p>
+            </div>
+          </NasaCard>
+        </div>
       ) : (
         <Card className="border border-border/50 bg-card/30">
           <CardContent className="p-8 flex flex-col items-center justify-center min-h-[300px] text-center">

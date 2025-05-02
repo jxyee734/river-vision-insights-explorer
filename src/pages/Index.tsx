@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { toast } from "sonner";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -17,6 +16,7 @@ import Navigation from '@/components/Navigation';
 import { useGPS } from '@/hooks/useGPS';
 import { calculateWaterQualityIndex, fetchWeatherData, predictPollutionSpread } from '@/utils/predictionModel';
 import LiveStreamView from '@/components/LiveStreamView';
+import VideoAnalysisComparison from '@/components/VideoAnalysisComparison';
 
 interface Frame {
   imageData: ImageData;
@@ -224,7 +224,7 @@ const Index = () => {
           </div>
 
           <div className="lg:col-span-2">
-            {!analysisResult && !['map', 'streams'].includes(activeTab) ? (
+            {!analysisResult && !['map', 'streams', 'compare'].includes(activeTab) ? (
               <div className="h-full flex items-center justify-center bg-white rounded-lg shadow p-8 border border-dashed border-gray-200">
                 <div className="text-center max-w-md">
                   <ArrowDownWideNarrow className="h-16 w-16 text-gray-300 mx-auto mb-4" />
@@ -239,6 +239,11 @@ const Index = () => {
               <MapView selectedLocation={streamLocation} />
             ) : !analysisResult && activeTab === 'streams' ? (
               <LiveStreamView onLocationSelected={handleStreamLocationSelected} />
+            ) : !analysisResult && activeTab === 'compare' ? (
+              <VideoAnalysisComparison 
+                userVideoAnalysis={analysisResult} 
+                onLocationSelected={handleStreamLocationSelected} 
+              />
             ) : (
               <div className="bg-white rounded-lg shadow">
                 <Tabs value={activeTab} onValueChange={handleTabChange}>
@@ -247,6 +252,7 @@ const Index = () => {
                     <TabsTrigger value="depth">Depth Analysis</TabsTrigger>
                     <TabsTrigger value="flow">Flow Analysis</TabsTrigger>
                     <TabsTrigger value="trash">Trash Detection</TabsTrigger>
+                    <TabsTrigger value="compare">Compare</TabsTrigger>
                     <TabsTrigger value="streams">Live Streams</TabsTrigger>
                     <TabsTrigger value="map">Map View</TabsTrigger>
                   </TabsList>
@@ -296,6 +302,13 @@ const Index = () => {
                           }}
                         />
                       )}
+                    </TabsContent>
+                    
+                    <TabsContent value="compare">
+                      <VideoAnalysisComparison 
+                        userVideoAnalysis={analysisResult} 
+                        onLocationSelected={handleStreamLocationSelected} 
+                      />
                     </TabsContent>
                     
                     <TabsContent value="streams">
