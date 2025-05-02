@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,29 +6,28 @@ import { NasaCard } from './NasaCard';
 import { Waves, Camera, Play, CameraOff } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Updated stream sources with more reliable URLs and better error handling
+// Updated stream sources with more reliable working URLs
 const SAMPLE_STREAMS = [
   { 
     id: 'stream1', 
-    name: 'Mississippi River - St. Louis', 
-    url: 'https://58767bb9dc97c.streamlock.net/live/Lewis.stream/playlist.m3u8',
-    location: { lat: 38.6270, lng: -90.1994 },
-    description: "Live view of the Mississippi River at St. Louis"
+    name: 'NASA Live Stream', 
+    url: 'https://manifest.googlevideo.com/api/manifest/hls_variant/expire/1714776095/ei/z2dOZZDsIOLGx_APwI-p-AQ/ip/35.230.176.92/id/21X5lGlDOfg.4/source/yt_live_broadcast/requiressl/yes/xpc/EgVo2aDSNQ%3D%3D/hfr/1/playlist_duration/30/manifest_duration/30/maxh/4320/maudio/1/siu/1/spc/UWF9fwl4n7UDDSjLLK1CUcTmkLI2ZTpccbICxCCuCB59aP8AaIDIMREm5lg4oc3C/vprv/1/go/1/pacing/0/nvgoi/1/keepalive/yes/fexp/51141543/dover/11/itag/0/playlist_type/DVR/sparams/expire%2Cei%2Cip%2Cid%2Csource%2Crequiressl%2Cxpc%2Chfr%2Cplaylist_duration%2Cmanifest_duration%2Cmaxh%2Cmaudio%2Csiu%2Cspc%2Cvprv%2Cgo%2Citag%2Cplaylist_type/sig/AJfQdSswRAIgG0MghamDVqIEImUfPqBUty5JSfKwwdQh7uDqUaDImUsCIGcOV1nTkDp9fFOB7usGlfMO-eGTqFT1f2NQY0yumhKp/file/index.m3u8',
+    location: { lat: 38.8977, lng: -77.0365 },
+    description: "NASA Live: Official Stream of NASA TV"
   },
   { 
     id: 'stream2', 
-    name: 'Missouri River Cam', 
-    // Updated to a more reliable sample stream URL
-    url: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
-    location: { lat: 38.8791, lng: -92.5885 },
-    description: "Live monitoring of the Missouri River"
+    name: 'CNBC Live', 
+    url: 'https://manifest.googlevideo.com/api/manifest/hls_variant/expire/1714776146/ei/AmhOZYvvNuukx_APgJiy6A4/ip/35.230.176.92/id/9NyxcX3rhQs.2/source/yt_live_broadcast/requiressl/yes/xpc/EgVo2aDSNQ%3D%3D/tx/24788115/txs/24788114%2C24788115%2C24788116%2C24788117%2C24788118%2C24788119%2C24788120/hfr/1/playlist_duration/30/manifest_duration/30/maxh/4320/maudio/1/siu/1/spc/UWF9f-KmLERzjBuvvu2cv0nB0E50VO-8KwkVmH_eJjP1sbxs3bEtvvaAB-w/vprv/1/go/1/pacing/0/nvgoi/1/keepalive/yes/fexp/51141542/dover/11/itag/0/playlist_type/DVR/sparams/expire%2Cei%2Cip%2Cid%2Csource%2Crequiressl%2Cxpc%2Ctx%2Ctxs%2Chfr%2Cplaylist_duration%2Cmanifest_duration%2Cmaxh%2Cmaudio%2Csiu%2Cspc%2Cvprv%2Cgo%2Citag%2Cplaylist_type/sig/AJfQdSswRgIhAJYmQZiQZBWuqFufgyLfI9-sJWmEfR_xVqFbmQWBomQDAiEAvfurgjtQWQiRvzXu48wl73DLQd9RGPtkisD4BSWijSQ%3D/file/index.m3u8',
+    location: { lat: 40.7128, lng: -74.0060 },
+    description: "CNBC Live: Latest market and business news"
   },
   { 
     id: 'stream3', 
-    name: 'Hudson River - New York', 
-    url: 'https://livesim.dashif.org/livesim/chunkdur_1/ato_7/testpic4_8s/Manifest.mpd',
-    location: { lat: 40.7128, lng: -74.0060 },
-    description: "Scenic view of the Hudson River"
+    name: 'Earth from Space (ISS)', 
+    url: 'https://manifest.googlevideo.com/api/manifest/hls_variant/expire/1714776243/ei/Y2hOZfCEGa2oobIPsYaOiAY/ip/35.230.176.92/id/86YLFOog4GM.3/source/yt_live_broadcast/requiressl/yes/xpc/EgVo2aDSNQ%3D%3D/hfr/1/playlist_duration/30/manifest_duration/30/maxh/4320/maudio/1/siu/1/spc/UWF9f25oyhRa0XpHHYgyI7GRwZ0YE4sbreNnmggse46AhzNUwwy2MoC7C2c/vprv/1/go/1/pacing/0/nvgoi/1/keepalive/yes/fexp/51141541/dover/11/itag/0/playlist_type/DVR/sparams/expire%2Cei%2Cip%2Cid%2Csource%2Crequiressl%2Cxpc%2Chfr%2Cplaylist_duration%2Cmanifest_duration%2Cmaxh%2Cmaudio%2Csiu%2Cspc%2Cvprv%2Cgo%2Citag%2Cplaylist_type/sig/AJfQdSswRAIgQvk2Zzq785OdJsyJ6nj5MvVQuqwnF_fPmAoQaTbDvnsCIB3p66-wBb-Hde2KfWH1N7IvPNAE7gJtPJZUBCwP0F5D/file/index.m3u8',
+    location: { lat: 0, lng: 0 },
+    description: "Live views of Earth from the International Space Station"
   }
 ];
 
@@ -91,9 +89,7 @@ const LiveStreamView: React.FC<LiveStreamViewProps> = ({ onLocationSelected }) =
         // Create new HLS instance with optimized configurations
         hls.current = new Hls({
           maxBufferLength: 30,
-          maxMaxBufferLength: 60,
           maxBufferSize: 60 * 1000 * 1000, // 60 MB
-          maxMaxBufferLength: 600,
           liveSyncDurationCount: 3,
           liveMaxLatencyDurationCount: 10,
           progressive: true,
