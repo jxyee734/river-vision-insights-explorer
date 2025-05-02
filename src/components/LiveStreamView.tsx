@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,42 +6,35 @@ import { NasaCard } from './NasaCard';
 import { Waves, Camera, Play, CameraOff } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Updated stream sources with YouTube live streams that work with HLS.js
+// Updated stream sources with YouTube embeds provided by the user
 const SAMPLE_STREAMS = [
   { 
     id: 'stream1', 
-    name: 'Nature River Stream', 
-    url: 'https://www.youtube.com/embed/live_stream?channel=UCElHZEF04eYWSZxb0moEMEw',
+    name: 'River Live Stream 1', 
+    url: 'https://www.youtube.com/embed/4YFHDjig1hc?si=Xz88oTLHsgCpv40X',
     location: { lat: 40.7128, lng: -74.0060 },
     description: "Live stream of flowing river with natural surroundings"
   },
   { 
     id: 'stream2', 
-    name: 'Mountain River Stream', 
-    url: 'https://www.youtube.com/embed/live_stream?channel=UCcgqLS2YY2_uiYTKXQEJgvA',
+    name: 'River Live Stream 2', 
+    url: 'https://www.youtube.com/embed/WUqQdNAUC1c?si=EDwKcF_AmppSv21x',
     location: { lat: 35.6895, lng: 139.6917 },
     description: "Live monitoring of mountain river flow"
   },
   { 
     id: 'stream3', 
-    name: 'Forest River Stream', 
-    url: 'https://www.youtube.com/embed/live_stream?channel=UCsLOlxJ4RVd0MQMLW5pz2SA',
+    name: 'River Live Stream 3', 
+    url: 'https://www.youtube.com/embed/euzaT88tzOM?si=wz_gxzsv5ffk9B08',
     location: { lat: 51.5074, lng: -0.1278 },
     description: "River monitoring in forest environment"
   },
   { 
     id: 'stream4', 
-    name: 'Waterfall Stream', 
-    url: 'https://www.youtube.com/embed/live_stream?channel=UCR9DNIWQgRF16gE0wHbTcBg',
+    name: 'River Live Stream 4', 
+    url: 'https://www.youtube.com/embed/M8_wWiCs8CM?si=ttBwIqZvHn70YxBd',
     location: { lat: 48.8566, lng: 2.3522 },
     description: "Live monitoring of waterfall and surrounding environment"
-  },
-  { 
-    id: 'stream5', 
-    name: 'Coastal River Stream', 
-    url: 'https://www.youtube.com/embed/live_stream?channel=UCYt49BK9I2GGBNk5bNe-_g',
-    location: { lat: 37.7749, lng: -122.4194 },
-    description: "Real-time environmental monitoring of coastal river"
   }
 ];
 
@@ -86,7 +78,6 @@ const LiveStreamView: React.FC<LiveStreamViewProps> = ({ onLocationSelected }) =
         retryTimeoutRef.current = null;
       }
       
-      // Use iframe for YouTube streams
       setTimeout(() => {
         setIsLoading(false);
         setIsPlaying(true);
@@ -180,7 +171,6 @@ const LiveStreamView: React.FC<LiveStreamViewProps> = ({ onLocationSelected }) =
               </div>
             )}
             
-            {/* Using iframe for YouTube instead of video element with HLS.js */}
             {selectedStream && !streamError && (
               <iframe
                 ref={iframeRef}
