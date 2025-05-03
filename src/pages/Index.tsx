@@ -17,6 +17,8 @@ import { useGPS } from '@/hooks/useGPS';
 import { calculateWaterQualityIndex, fetchWeatherData, predictPollutionSpread } from '@/utils/predictionModel';
 import LiveStreamView from '@/components/LiveStreamView';
 import VideoAnalysisComparison from '@/components/VideoAnalysisComparison';
+import GuideModal from '@/components/GuideModal';
+import TipsWidget from '@/components/TipsWidget';
 
 interface Frame {
   imageData: ImageData;
@@ -168,13 +170,20 @@ const Index = () => {
               <p className="text-sm text-gray-500">Advanced river analysis and monitoring</p>
             </div>
           </div>
-          <Navigation />
+          <div className="flex items-center gap-3">
+            <GuideModal />
+            <Navigation />
+          </div>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1">
+            <div className="mb-4">
+              <TipsWidget />
+            </div>
+            
             <UploadSection 
               onVideoUploaded={handleVideoUpload} 
               isProcessing={isProcessing} 
