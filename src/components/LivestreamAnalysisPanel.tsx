@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Play, Pause, BarChart2, Trash2, Activity, AlertCircle, TrendingUp, Clock } from 'lucide-react';
+import { Play, Pause, BarChart2, Trash2, Activity, AlertCircle, TrendingUp, Clock, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { captureFrameFromIframe, analyzeLivestreamFrame, LivestreamAnalysisResult } from '@/utils/livestreamAnalysis';
 
@@ -239,20 +240,62 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
         </div>
       )}
       
-      {isAnalyzing && isStreamActive && (
-        <div className="bg-blue-50 dark:bg-blue-950/30 p-2 rounded-md flex items-center justify-between">
-          <div className="flex items-center">
-            <Clock className="text-blue-500 dark:text-blue-400 w-4 h-4 mr-2" />
-            <p className="text-sm text-blue-700 dark:text-blue-300">
-              {isProcessing ? "Processing..." : "Real-time analysis in progress"}
-            </p>
+      {isAnalyzing && latestResult && (
+        <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-md mb-4">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="font-semibold text-blue-900 dark:text-blue-300 flex items-center">
+              <TrendingUp className="w-5 h-5 mr-2" />
+              Real-Time Measurements
+            </h3>
+            <Badge variant={isProcessing ? "outline" : "secondary"} className="animate-pulse">
+              {isProcessing ? "Processing..." : `Next update: ${timeToNextAnalysis}s`}
+            </Badge>
           </div>
-          <div className="text-sm font-medium">
-            {isProcessing ? (
-              <span className="text-amber-600 dark:text-amber-400">Processing frame...</span>
-            ) : (
-              `Next analysis in ${timeToNextAnalysis}s`
-            )}
+          
+          <div className="grid grid-cols-2 gap-4 mb-3">
+            <div className="bg-white dark:bg-slate-900 p-3 rounded-md shadow-sm">
+              <div className="text-sm text-gray-500 dark:text-gray-400">Current Flow Velocity</div>
+              <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 flex items-center">
+                {latestResult.flowVelocity.toFixed(2)}
+                <span className="text-base ml-1">m/s</span>
+                {latestResult.flowDirection && (
+                  <Badge variant="outline" className="ml-2 text-xs">
+                    <ArrowRight className="w-3 h-3 mr-1" /> {latestResult.flowDirection}
+                  </Badge>
+                )}
+              </div>
+            </div>
+            <div className="bg-white dark:bg-slate-900 p-3 rounded-md shadow-sm">
+              <div className="text-sm text-gray-500 dark:text-gray-400">Measurements Collected</div>
+              <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+                {analysisResults.length}
+                <span className="text-base ml-1">points</span>
+              </div>
+            </div>
+          </div>
+          
+          <div>
+            <div className="flex justify-between text-sm mb-1">
+              <span>Average Flow Velocity</span>
+              <span className="font-medium">{averageFlowVelocity.toFixed(2)} m/s</span>
+            </div>
+            <Progress 
+              value={(averageFlowVelocity / 5) * 100} 
+              className="h-3 bg-blue-100 dark:bg-blue-900/30" 
+            />
+            
+            <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+              Water quality: 
+              <span className={`ml-1 font-medium ${
+                latestResult.waterQuality?.color === 'green-500' 
+                  ? 'text-green-600 dark:text-green-400' 
+                  : latestResult.waterQuality?.color === 'yellow-500'
+                  ? 'text-yellow-600 dark:text-yellow-400'
+                  : 'text-red-600 dark:text-red-400'
+              }`}>
+                {latestResult.waterQuality?.status}
+              </span>
+            </div>
           </div>
         </div>
       )}
