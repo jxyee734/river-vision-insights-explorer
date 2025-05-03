@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
-import { School, List, HelpCircle, BookOpen, ArrowRight } from 'lucide-react';
+import { School, List, HelpCircle, BookOpen, ArrowRight, FileVideo, BarChart2, Waves } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 const GuideModal = () => {
