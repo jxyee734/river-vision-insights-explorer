@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,12 +21,15 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<LivestreamAnalysisResult[]>([]);
   const [latestResult, setLatestResult] = useState<LivestreamAnalysisResult | null>(null);
-  const [analysisInterval, setAnalysisInterval] = useState<number>(5); // seconds
+  const [analysisInterval, setAnalysisInterval] = useState<number>(10); // Increased to 10 seconds
   const [lastAnalysisTime, setLastAnalysisTime] = useState<Date | null>(null);
   const [timeToNextAnalysis, setTimeToNextAnalysis] = useState<number>(analysisInterval);
+  const [isProcessing, setIsProcessing] = useState(false);
   
+  // Refs to store timers
   const analysisTimerRef = useRef<number | null>(null);
   const countdownTimerRef = useRef<number | null>(null);
+  const processingTimeoutRef = useRef<number | null>(null);
   
   // Clean up on unmount
   useEffect(() => {
@@ -37,6 +39,9 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
       }
       if (countdownTimerRef.current) {
         clearInterval(countdownTimerRef.current);
+      }
+      if (processingTimeoutRef.current) {
+        clearTimeout(processingTimeoutRef.current);
       }
     };
   }, []);
@@ -49,8 +54,8 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
     setLastAnalysisTime(null);
   }, [streamName]);
   
-  // Update countdown timer
-  useEffect(() => {
+  // Memoized function to update countdown timer
+  const updateCountdown = useCallback(() => {
     if (isAnalyzing && lastAnalysisTime) {
       if (countdownTimerRef.current) {
         clearInterval(countdownTimerRef.current);
@@ -73,6 +78,11 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
       }
     };
   }, [isAnalyzing, lastAnalysisTime, analysisInterval]);
+  
+  // Update countdown when dependencies change
+  useEffect(() => {
+    updateCountdown();
+  }, [updateCountdown]);
   
   const startAnalysis = async () => {
     if (!isStreamActive || !iframeRef.current) {
@@ -101,20 +111,42 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
       clearInterval(countdownTimerRef.current);
       countdownTimerRef.current = null;
     }
+    if (processingTimeoutRef.current) {
+      clearTimeout(processingTimeoutRef.current);
+      processingTimeoutRef.current = null;
+    }
     setIsAnalyzing(false);
     setTimeToNextAnalysis(analysisInterval);
+    setIsProcessing(false);
   };
   
   const performAnalysis = async () => {
+    // Prevent multiple analyses running simultaneously
+    if (isProcessing) return;
+    
     try {
-      if (!iframeRef.current) return;
+      setIsProcessing(true);
+      
+      if (!iframeRef.current) {
+        setIsProcessing(false);
+        return;
+      }
       
       // Capture a frame from the iframe
       const frameData = await captureFrameFromIframe(iframeRef.current);
       if (!frameData) {
         console.error("Failed to capture frame");
+        setIsProcessing(false);
         return;
       }
+      
+      // Add timeout to ensure processing state gets cleared
+      if (processingTimeoutRef.current) {
+        clearTimeout(processingTimeoutRef.current);
+      }
+      processingTimeoutRef.current = window.setTimeout(() => {
+        setIsProcessing(false);
+      }, 8000);
       
       // Analyze the frame
       const result = await analyzeLivestreamFrame(frameData);
@@ -122,10 +154,10 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
       // Update state with new result
       setLatestResult(result);
       setAnalysisResults(prev => {
-        // Keep only the last 20 results
+        // Keep only the last 10 results to reduce memory usage
         const newResults = [...prev, result];
-        if (newResults.length > 20) {
-          return newResults.slice(newResults.length - 20);
+        if (newResults.length > 10) {
+          return newResults.slice(newResults.length - 10);
         }
         return newResults;
       });
@@ -137,23 +169,38 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
       
     } catch (error) {
       console.error("Analysis error:", error);
-      toast.error("Analysis failed. Retrying...");
+    } finally {
+      setIsProcessing(false);
+      if (processingTimeoutRef.current) {
+        clearTimeout(processingTimeoutRef.current);
+        processingTimeoutRef.current = null;
+      }
     }
   };
   
-  // Calculate averages from the collected data
-  const averageFlowVelocity = analysisResults.length > 0
-    ? analysisResults.reduce((sum, result) => sum + result.flowVelocity, 0) / analysisResults.length
-    : 0;
+  // Calculate averages from the collected data - memoized calculation
+  const { averageFlowVelocity, totalTrashDetected, allTrashCategories, recentResults } = React.useMemo(() => {
+    const avgFlow = analysisResults.length > 0
+      ? analysisResults.reduce((sum, result) => sum + result.flowVelocity, 0) / analysisResults.length
+      : 0;
+      
+    const totalTrash = analysisResults.reduce((sum, result) => sum + result.trashCount, 0);
     
-  const totalTrashDetected = analysisResults.reduce((sum, result) => sum + result.trashCount, 0);
-  
-  const allTrashCategories = analysisResults.reduce((categories, result) => {
-    result.trashCategories.forEach(category => categories.add(category));
-    return categories;
-  }, new Set<string>());
+    const categories = analysisResults.reduce((cats, result) => {
+      result.trashCategories.forEach(category => cats.add(category));
+      return cats;
+    }, new Set<string>());
 
-  const recentResults = analysisResults.slice(-5).reverse();
+    // Only use the last 5 results for recent display
+    const recent = analysisResults.slice(-5).reverse();
+
+    return {
+      averageFlowVelocity: avgFlow,
+      totalTrashDetected: totalTrash,
+      allTrashCategories: categories,
+      recentResults: recent
+    };
+  }, [analysisResults]);
 
   return (
     <div className="space-y-4">
@@ -168,7 +215,7 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
             size="sm"
             variant={isAnalyzing ? "destructive" : "default"}
             onClick={isAnalyzing ? stopAnalysis : startAnalysis}
-            disabled={!isStreamActive}
+            disabled={!isStreamActive || isProcessing}
           >
             {isAnalyzing ? (
               <>
@@ -197,11 +244,15 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
           <div className="flex items-center">
             <Clock className="text-blue-500 dark:text-blue-400 w-4 h-4 mr-2" />
             <p className="text-sm text-blue-700 dark:text-blue-300">
-              Real-time analysis in progress
+              {isProcessing ? "Processing..." : "Real-time analysis in progress"}
             </p>
           </div>
           <div className="text-sm font-medium">
-            Next analysis in {timeToNextAnalysis}s
+            {isProcessing ? (
+              <span className="text-amber-600 dark:text-amber-400">Processing frame...</span>
+            ) : (
+              `Next analysis in ${timeToNextAnalysis}s`
+            )}
           </div>
         </div>
       )}
@@ -233,9 +284,22 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
                   <Progress value={(averageFlowVelocity / 5) * 100} />
                 </div>
                 
-                {isAnalyzing && recentResults.length > 0 && (
+                {isAnalyzing && latestResult && (
                   <div className="bg-slate-50 dark:bg-slate-900/50 p-2 rounded-md">
-                    <div className="text-xs font-medium mb-2">Recent Measurements</div>
+                    <div className="flex justify-between items-center text-xs font-medium mb-2">
+                      <span>Direction: {latestResult.flowDirection}</span>
+                      <span className={`px-2 py-0.5 rounded text-xs ${
+                        latestResult.waterQuality?.color === 'green-500' 
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
+                          : latestResult.waterQuality?.color === 'yellow-500'
+                          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                          : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                      }`}>
+                        Water: {latestResult.waterQuality?.status}
+                      </span>
+                    </div>
+                    
+                    <div className="text-xs font-medium mb-1">Recent Measurements</div>
                     <div className="space-y-1">
                       {recentResults.map((result, index) => (
                         <div key={index} className="flex justify-between text-xs">
@@ -321,6 +385,7 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
               src={latestResult.processedImage} 
               alt="Processed stream frame" 
               className="w-full h-full object-contain"
+              loading="lazy"
             />
             <div className="absolute bottom-2 right-2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded">
               {new Date(latestResult.timestamp).toLocaleTimeString()}
@@ -331,7 +396,7 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
       
       {isAnalyzing && (
         <div className="text-xs text-muted-foreground">
-          Analyzing stream every {analysisInterval} seconds. Results may be simulated for demo purposes.
+          Analyzing stream every {analysisInterval} seconds. Using simulated data for demonstration.
         </div>
       )}
     </div>
