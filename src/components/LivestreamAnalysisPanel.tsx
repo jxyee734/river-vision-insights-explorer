@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Play, Pause, BarChart2, Trash2, Activity, AlertCircle } from 'lucide-react';
+import { Play, Pause, BarChart2, Trash2, Activity, AlertCircle, TrendingUp, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { captureFrameFromIframe, analyzeLivestreamFrame, LivestreamAnalysisResult } from '@/utils/livestreamAnalysis';
 
@@ -22,14 +23,20 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
   const [analysisResults, setAnalysisResults] = useState<LivestreamAnalysisResult[]>([]);
   const [latestResult, setLatestResult] = useState<LivestreamAnalysisResult | null>(null);
   const [analysisInterval, setAnalysisInterval] = useState<number>(5); // seconds
+  const [lastAnalysisTime, setLastAnalysisTime] = useState<Date | null>(null);
+  const [timeToNextAnalysis, setTimeToNextAnalysis] = useState<number>(analysisInterval);
   
   const analysisTimerRef = useRef<number | null>(null);
+  const countdownTimerRef = useRef<number | null>(null);
   
   // Clean up on unmount
   useEffect(() => {
     return () => {
       if (analysisTimerRef.current) {
         clearInterval(analysisTimerRef.current);
+      }
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
       }
     };
   }, []);
@@ -39,7 +46,33 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
     stopAnalysis();
     setAnalysisResults([]);
     setLatestResult(null);
+    setLastAnalysisTime(null);
   }, [streamName]);
+  
+  // Update countdown timer
+  useEffect(() => {
+    if (isAnalyzing && lastAnalysisTime) {
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+      }
+      
+      countdownTimerRef.current = window.setInterval(() => {
+        const elapsed = (new Date().getTime() - lastAnalysisTime.getTime()) / 1000;
+        const remaining = Math.max(0, analysisInterval - elapsed);
+        setTimeToNextAnalysis(Math.round(remaining));
+        
+        if (remaining <= 0 && countdownTimerRef.current) {
+          clearInterval(countdownTimerRef.current);
+        }
+      }, 1000);
+    }
+    
+    return () => {
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+      }
+    };
+  }, [isAnalyzing, lastAnalysisTime, analysisInterval]);
   
   const startAnalysis = async () => {
     if (!isStreamActive || !iframeRef.current) {
@@ -51,7 +84,7 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
     toast.info("Starting livestream analysis...");
     
     // Perform initial analysis immediately
-    performAnalysis();
+    await performAnalysis();
     
     // Set up interval for continuous analysis
     analysisTimerRef.current = window.setInterval(() => {
@@ -64,7 +97,12 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
       clearInterval(analysisTimerRef.current);
       analysisTimerRef.current = null;
     }
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
     setIsAnalyzing(false);
+    setTimeToNextAnalysis(analysisInterval);
   };
   
   const performAnalysis = async () => {
@@ -92,6 +130,11 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
         return newResults;
       });
       
+      // Update last analysis time
+      const now = new Date();
+      setLastAnalysisTime(now);
+      setTimeToNextAnalysis(analysisInterval);
+      
     } catch (error) {
       console.error("Analysis error:", error);
       toast.error("Analysis failed. Retrying...");
@@ -109,6 +152,8 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
     result.trashCategories.forEach(category => categories.add(category));
     return categories;
   }, new Set<string>());
+
+  const recentResults = analysisResults.slice(-5).reverse();
 
   return (
     <div className="space-y-4">
@@ -147,6 +192,20 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
         </div>
       )}
       
+      {isAnalyzing && isStreamActive && (
+        <div className="bg-blue-50 dark:bg-blue-950/30 p-2 rounded-md flex items-center justify-between">
+          <div className="flex items-center">
+            <Clock className="text-blue-500 dark:text-blue-400 w-4 h-4 mr-2" />
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              Real-time analysis in progress
+            </p>
+          </div>
+          <div className="text-sm font-medium">
+            Next analysis in {timeToNextAnalysis}s
+          </div>
+        </div>
+      )}
+      
       {isStreamActive && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
@@ -174,6 +233,24 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
                   <Progress value={(averageFlowVelocity / 5) * 100} />
                 </div>
                 
+                {isAnalyzing && recentResults.length > 0 && (
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-2 rounded-md">
+                    <div className="text-xs font-medium mb-2">Recent Measurements</div>
+                    <div className="space-y-1">
+                      {recentResults.map((result, index) => (
+                        <div key={index} className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">
+                            {new Date(result.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}
+                          </span>
+                          <span className={result.flowVelocity > averageFlowVelocity ? 'text-blue-500' : ''}>
+                            {result.flowVelocity.toFixed(2)} m/s
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
                 <div className="text-xs text-muted-foreground">
                   {analysisResults.length} measurement{analysisResults.length !== 1 ? 's' : ''} collected
                 </div>
@@ -200,6 +277,24 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
                     <span>Total Detected</span>
                     <span className="font-medium">{totalTrashDetected} items</span>
                   </div>
+                  
+                  {isAnalyzing && recentResults.length > 0 && (
+                    <div className="bg-slate-50 dark:bg-slate-900/50 p-2 rounded-md mb-2">
+                      <div className="text-xs font-medium mb-2">Recent Detections</div>
+                      <div className="space-y-1">
+                        {recentResults.map((result, index) => (
+                          <div key={index} className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">
+                              {new Date(result.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}
+                            </span>
+                            <span className={result.trashCount > 0 ? 'text-red-500' : ''}>
+                              {result.trashCount} items
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   
                   <div className="flex flex-wrap gap-1 mt-2">
                     {Array.from(allTrashCategories).map(category => (

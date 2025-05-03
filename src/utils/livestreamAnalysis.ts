@@ -9,6 +9,11 @@ export interface LivestreamAnalysisResult {
   trashCategories: string[];
   processedImage?: string;
   timestamp: Date;
+  flowDirection?: string;
+  waterQuality?: {
+    status: string;
+    color: string;
+  };
 }
 
 /**
@@ -134,13 +139,44 @@ export async function analyzeLivestreamFrame(frameData: string): Promise<Livestr
         ctx.fillText(label, x + 5, y - 5);
       });
     }
+
+    // Determine flow direction (for real-time data display)
+    let flowDirection = "Unknown";
+    if (flowResult && flowResult.directions && flowResult.directions.length > 0) {
+      // Calculate the average angle of flow directions
+      const avgAngle = flowResult.directions.reduce((sum, angle) => sum + angle, 0) / flowResult.directions.length;
+      // Convert angle to cardinal direction
+      const directions = ["East", "Northeast", "North", "Northwest", "West", "Southwest", "South", "Southeast"];
+      const index = Math.round(((avgAngle + Math.PI) % (2 * Math.PI)) / (Math.PI / 4)) % 8;
+      flowDirection = directions[index];
+    }
+    
+    // Simulate water quality assessment based on detected trash and other factors
+    let waterQuality = {
+      status: "Good",
+      color: "green-500"
+    };
+    
+    if (trashCount > 3) {
+      waterQuality = {
+        status: "Poor",
+        color: "red-500"
+      };
+    } else if (trashCount > 0) {
+      waterQuality = {
+        status: "Fair",
+        color: "yellow-500"
+      };
+    }
     
     return {
       flowVelocity: flowResult ? flowResult.flowMagnitude : 0.5,
       trashCount,
       trashCategories: Array.from(trashCategories),
       processedImage: canvas.toDataURL('image/jpeg'),
-      timestamp: new Date()
+      timestamp: new Date(),
+      flowDirection,
+      waterQuality
     };
   } catch (error) {
     console.error("Error analyzing livestream frame:", error);
