@@ -43,9 +43,9 @@ export const NasaCard = ({
   return (
     <Card 
       className={cn(
-        "overflow-hidden border border-border transition-all duration-300 hover:shadow-md hover:shadow-primary/10", 
+        "overflow-hidden border border-border/30 transition-all duration-500 hover:shadow-lg hover:shadow-primary/10 card-hover", 
         gradient && "bg-gradient-to-b from-card to-card/80",
-        glassmorphism && "glass-card",
+        glassmorphism && "backdrop-blur-xl bg-card/40 border-white/10",
         animationClass,
         className
       )} 
@@ -59,14 +59,18 @@ export const NasaCard = ({
               {animate === 'float' && <span className="space-dot ml-2 float"></span>}
             </CardTitle>
           )}
-          {description && <CardDescription>{description}</CardDescription>}
+          {description && (
+            <CardDescription className="text-sm opacity-90 transition-opacity duration-300 hover:opacity-100">
+              {description}
+            </CardDescription>
+          )}
         </CardHeader>
       )}
       <CardContent className={cn("p-4", !title && !description && "pt-6")}>
         {children}
       </CardContent>
       {footer && (
-        <CardFooter className="border-t border-border/50 bg-muted/10">
+        <CardFooter className="border-t border-border/30 bg-muted/10 py-3">
           {footer}
           {animate === 'scan' && <div className="data-bar w-full mt-2"></div>}
         </CardFooter>

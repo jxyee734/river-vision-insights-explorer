@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   NavigationMenu,
@@ -5,7 +6,6 @@ import {
   NavigationMenuItem,
   NavigationMenuList,
   NavigationMenuTrigger,
-  navigationMenuTriggerStyle,
   NavigationMenuLink,
 } from "@/components/ui/navigation-menu";
 import { cn } from "@/lib/utils";
@@ -14,11 +14,11 @@ import { Rocket, Satellite, Earth, Database, BarChart, Layers, Search, Monitor, 
 
 export function Navigation() {
   return (
-    <div className="w-full py-3 px-4 bg-card/80 backdrop-blur-md border-b border-border shadow-md">
+    <div className="w-full py-4 px-6 bg-card/30 backdrop-blur-lg border-b border-border/30 shadow-md sticky top-0 z-40 transition-all duration-300">
       <div className="flex items-center justify-between max-w-7xl mx-auto">
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-3">
           <div className="orbit">
-            <Rocket className="h-6 w-6 text-primary float" />
+            <Rocket className="h-6 w-6 text-primary float hover:text-blue-400 transition-colors duration-300" />
           </div>
           <span className="text-lg font-bold tracking-wider uppercase text-foreground glow-text">RIVER VISION</span>
           <div className="hidden md:flex space-x-1 items-center">
@@ -30,23 +30,23 @@ export function Navigation() {
         <NavigationMenu className="mx-auto hidden md:block">
           <NavigationMenuList className="gap-1">
             <NavigationMenuItem>
-              <Link to="/" className="group flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md hover:bg-muted/80 transition-colors hover-lift">
-                <Monitor className="h-4 w-4 text-primary group-hover:text-primary" />
+              <Link to="/" className="group flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md hover:bg-muted/50 transition-all duration-300 hover:-translate-y-1">
+                <Monitor className="h-4 w-4 text-primary group-hover:text-blue-400 transition-colors duration-300" />
                 Dashboard
               </Link>
             </NavigationMenuItem>
 
             <NavigationMenuItem>
-              <NavigationMenuTrigger className="bg-transparent hover:bg-muted/80 focus:bg-muted/80 data-[state=open]:bg-muted/80 hover-lift">
+              <NavigationMenuTrigger className="bg-transparent hover:bg-muted/50 focus:bg-muted/80 data-[state=open]:bg-muted/80 transition-all duration-300 hover:-translate-y-1">
                 <Database className="h-4 w-4 mr-2 text-primary" />
                 Analysis Tools
               </NavigationMenuTrigger>
               <NavigationMenuContent>
-                <ul className="grid gap-2 p-4 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr] bg-card/95 backdrop-blur-md rounded-md border border-border fade-in">
+                <ul className="grid gap-2 p-4 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr] bg-card/95 backdrop-blur-lg rounded-xl border border-border/30 shadow-xl fade-in">
                   <li className="row-span-3">
                     <NavigationMenuLink asChild>
                       <Link
-                        className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-secondary/30 to-secondary/10 p-6 no-underline outline-none focus:shadow-md border border-border tech-scanline"
+                        className="flex h-full w-full select-none flex-col justify-end rounded-lg bg-gradient-to-b from-blue-900/30 to-blue-950/10 p-6 no-underline outline-none focus:shadow-md border border-border/30 tech-scanline card-hover"
                         to="/"
                       >
                         <Satellite className="h-6 w-6 text-primary float" />
@@ -73,22 +73,22 @@ export function Navigation() {
             </NavigationMenuItem>
 
             <NavigationMenuItem>
-              <Link to="/?tab=flow" className="group flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md hover:bg-muted/80 transition-colors hover-lift">
-                <BarChart className="h-4 w-4 text-primary group-hover:text-primary" />
+              <Link to="/?tab=flow" className="group flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md hover:bg-muted/50 transition-all duration-300 hover:-translate-y-1">
+                <BarChart className="h-4 w-4 text-primary group-hover:text-blue-400 transition-colors duration-300" />
                 Flow Analytics
               </Link>
             </NavigationMenuItem>
 
             <NavigationMenuItem>
-              <Link to="/?tab=trash" className="group flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md hover:bg-muted/80 transition-colors hover-lift">
-                <Search className="h-4 w-4 text-primary group-hover:text-primary" />
+              <Link to="/?tab=trash" className="group flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md hover:bg-muted/50 transition-all duration-300 hover:-translate-y-1">
+                <Search className="h-4 w-4 text-primary group-hover:text-blue-400 transition-colors duration-300" />
                 Pollution Detection
               </Link>
             </NavigationMenuItem>
 
             <NavigationMenuItem>
-              <Link to="/?tab=streams" className="group flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md hover:bg-muted/80 transition-colors hover-lift">
-                <Waves className="h-4 w-4 text-primary group-hover:text-primary" />
+              <Link to="/?tab=streams" className="group flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md hover:bg-muted/50 transition-all duration-300 hover:-translate-y-1">
+                <Waves className="h-4 w-4 text-primary group-hover:text-blue-400 transition-colors duration-300" />
                 Live Streams
               </Link>
             </NavigationMenuItem>
@@ -96,7 +96,7 @@ export function Navigation() {
         </NavigationMenu>
 
         <div className="flex items-center">
-          <div className="nasa-badge pulse-slow">LIVE DATA</div>
+          <div className="nasa-badge pulse-slow button-pulse">LIVE DATA</div>
         </div>
       </div>
       <div className="data-bar mt-1"></div>
@@ -118,7 +118,7 @@ const ListItem = React.forwardRef<
           to={href}
           ref={ref}
           className={cn(
-            "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-muted/50 hover-lift",
+            "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-all duration-300 hover:bg-muted/50 card-hover",
             className
           )}
           {...props}
