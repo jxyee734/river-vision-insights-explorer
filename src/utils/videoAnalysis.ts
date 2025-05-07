@@ -1,6 +1,6 @@
-import { analyzeImage, extractVideoFrame, delay, GeminiResponse } from '../services/geminiService';
-import { detectTrashInImage } from '../services/roboflowService';
+
 import { calculateOpticalFlow } from './tensorflowFlowAnalysis';
+import { detectTrashInImage } from '../services/roboflowService';
 import type { AnalysisResult } from '../types/analysis';
 
 // Add helper function to draw bounding boxes and labels
@@ -33,7 +33,7 @@ function drawDetections(canvas: HTMLCanvasElement, predictions: any[]): string {
 }
 
 /**
- * Process a video file and analyze its content using real algorithms, TensorFlow.js and Gemini API
+ * Process a video file and analyze its content using TensorFlow.js and object detection
  */
 export async function analyzeVideo(file: File): Promise<AnalysisResult> {
   const video = document.createElement('video');
@@ -46,11 +46,8 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
   
   const frames: ImageData[] = [];
   const trashDetectionImages: string[] = [];
-  let trashAnalysis: GeminiResponse | null = null;
-  let depthProfile: number[] = [];
   let totalTrashCount = 0;
   let allCategories: Set<string> = new Set();
-  let environmentalAnalysis = '';
   let totalFlowMagnitude = 0;
   let flowVectorsCount = 0;
   
@@ -66,7 +63,7 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
     
     for (let currentTime = 0; currentTime < totalDuration; currentTime += frameInterval) {
       video.currentTime = currentTime;
-      await delay(100);
+      await new Promise(r => setTimeout(r, 100));
       
       if (window.updateProcessingStage) window.updateProcessingStage(1);
       
@@ -100,7 +97,7 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
         
         if (window.updateProcessingStage) window.updateProcessingStage(2);
         
-        // Analyze directly with Roboflow API using the new API key
+        // Analyze directly with Roboflow API 
         try {
           const roboflowResult = await detectTrashInImage(frameBase64);
           
@@ -118,24 +115,6 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
         } catch (error) {
           console.error('Roboflow API error:', error);
         }
-        
-        // Also get analysis from Gemini for environmental impact
-        try {
-          const geminiResult = await analyzeImage(canvas.toDataURL(), 
-            "Analyze this river frame and identify any trash or pollution. Return a JSON with: count (number of trash items), categories (array of types like 'plastic', 'metal'), and analysis (brief environmental impact). Be accurate and conservative in counting."
-          );
-          
-          if (geminiResult) {
-            if (geminiResult.analysis && !environmentalAnalysis) {
-              environmentalAnalysis = geminiResult.analysis;
-            }
-          }
-        } catch (error) {
-          console.error('Gemini API error:', error);
-        }
-        
-        const depthEstimate = estimateDepthFromImage(frameData);
-        depthProfile.push(...depthEstimate);
       }
     }
     
@@ -150,14 +129,14 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
     URL.revokeObjectURL(video.src);
     
     return {
-      averageDepth: calculateAverage(depthProfile),
-      maxDepth: Math.max(...depthProfile),
-      depthProfile,
+      averageDepth: 0,
+      maxDepth: 0,
+      depthProfile: [],
       averageVelocity: Number(averageFlowMagnitude.toFixed(2)),
-      flowMagnitude: Number((averageFlowMagnitude * 2).toFixed(2)), // Scale for better visualization 
+      flowMagnitude: Number((averageFlowMagnitude * 2).toFixed(2)),
       trashCount: totalTrashCount,
       trashCategories: Array.from(allCategories),
-      environmentalImpact: environmentalAnalysis || 'No significant environmental impact detected',
+      environmentalImpact: '',
       frames,
       trashDetectionImages: trashDetectionImages || []
     };
@@ -166,62 +145,4 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
     URL.revokeObjectURL(video.src);
     throw new Error("Video analysis failed");
   }
-}
-
-/**
- * Estimate depth from image data using image processing techniques
- * This is a simplified real algorithm that analyzes image brightness and color
- */
-function estimateDepthFromImage(imageData: ImageData): number[] {
-  const { data, width, height } = imageData;
-  const depthEstimates: number[] = [];
-  
-  // Divide the image into regions for sampling
-  const numRegions = 10;
-  const regionWidth = Math.floor(width / numRegions);
-  
-  for (let region = 0; region < numRegions; region++) {
-    let totalBrightness = 0;
-    let pixelCount = 0;
-    
-    // Calculate the region boundaries
-    const startX = region * regionWidth;
-    const endX = Math.min((region + 1) * regionWidth, width);
-    
-    // Sample pixels in this region
-    for (let y = 0; y < height; y += 10) { // Sample every 10th row for performance
-      for (let x = startX; x < endX; x += 10) { // Sample every 10th pixel in the region
-        const index = (y * width + x) * 4;
-        
-        // Calculate pixel brightness (simple grayscale conversion)
-        const r = data[index];
-        const g = data[index + 1];
-        const b = data[index + 2];
-        const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
-        
-        // Darker areas are typically deeper in water
-        totalBrightness += brightness;
-        pixelCount++;
-      }
-    }
-    
-    // Calculate average brightness for this region
-    const averageBrightness = totalBrightness / pixelCount;
-    
-    // Convert brightness to depth (inverted relationship - darker = deeper)
-    // Scale to reasonable river depth values (1-10 meters)
-    const depth = 10 - (averageBrightness / 255) * 9;
-    depthEstimates.push(Number(depth.toFixed(2)));
-  }
-  
-  return depthEstimates;
-}
-
-/**
- * Calculate average of a number array
- */
-function calculateAverage(numbers: number[]): number {
-  if (numbers.length === 0) return 0;
-  const sum = numbers.reduce((total, num) => total + num, 0);
-  return Number((sum / numbers.length).toFixed(2));
 }
