@@ -1,19 +1,8 @@
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Activity } from 'lucide-react';
+import { ArrowRight, ArrowRightCircle, Activity } from 'lucide-react';
 import { NasaCard } from './NasaCard';
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend,
-  ResponsiveContainer
-} from 'recharts';
-import { ChartContainer, ChartTooltipContent, ChartTooltip } from '@/components/ui/chart';
 
 interface FlowAnalysisProps {
   averageVelocity: number;
@@ -29,28 +18,15 @@ const FlowAnalysis: React.FC<FlowAnalysisProps> = ({ averageVelocity, flowMagnit
     return 'bg-blue-500 text-white'; // Very fast
   };
 
-  // Generate sample data based on flow magnitude for the graph
-  const flowData = useMemo(() => {
-    const dataPoints = 10;
-    return Array.from({ length: dataPoints }).map((_, index) => {
-      // Create a simple wave pattern based on the magnitude
-      const variance = Math.sin(index / dataPoints * Math.PI * 2) * (flowMagnitude * 0.3);
-      return {
-        time: `T${index + 1}`,
-        magnitude: Math.max(0, flowMagnitude + variance),
-      };
-    });
-  }, [flowMagnitude]);
-
-  // Chart config for Flow Magnitude visualization
-  const chartConfig = {
-    magnitude: {
-      label: "Flow Magnitude",
-      theme: {
-        light: "#1E90FF", // Dodger blue
-        dark: "#60A5FA",  // Blue-400
-      }
-    },
+  // Determine visualization of flow patterns
+  const getFlowArrows = (magnitude: number) => {
+    const count = Math.round(magnitude * 5); // Scale for visual representation
+    return Array(count).fill(0).map((_, i) => (
+      <div key={i} className="flex items-center">
+        <div className={`h-2 ${i % 2 === 0 ? 'w-16' : 'w-8'} bg-blue-400 rounded-sm mr-1 animate-flow`}></div>
+        <ArrowRight size={16} className="text-blue-500" />
+      </div>
+    ));
   };
 
   return (
@@ -93,39 +69,16 @@ const FlowAnalysis: React.FC<FlowAnalysisProps> = ({ averageVelocity, flowMagnit
                 <span className="ml-1 text-sm text-muted-foreground">units</span>
               </div>
             </div>
+            <ArrowRightCircle className="h-8 w-8 text-primary/80" />
           </div>
         </div>
         
         <div className="bg-card/30 p-3 rounded-lg border border-border/50 flex flex-col">
-          <h3 className="text-sm font-medium text-primary-foreground mb-2">Flow Magnitude Graph</h3>
-          <div className="flex-grow h-[200px]">
-            <ChartContainer config={chartConfig}>
-              <LineChart data={flowData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                <CartesianGrid stroke="#ccc" strokeDasharray="5 5" opacity={0.3} />
-                <XAxis 
-                  dataKey="time" 
-                  stroke="#888" 
-                  fontSize={10}
-                  tickLine={false}
-                />
-                <YAxis 
-                  stroke="#888" 
-                  fontSize={10}
-                  tickLine={false}
-                  domain={[0, 'auto']}
-                />
-                <Tooltip content={<ChartTooltipContent />} />
-                <Line
-                  type="monotone"
-                  dataKey="magnitude"
-                  name="magnitude"
-                  stroke="var(--color-magnitude)"
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ChartContainer>
+          <h3 className="text-sm font-medium text-primary-foreground mb-2">Flow Visualization</h3>
+          <div className="flex-grow overflow-hidden relative flow-pattern">
+            <div className="absolute inset-0 flex flex-col justify-around">
+              {getFlowArrows(flowMagnitude)}
+            </div>
           </div>
         </div>
       </div>
