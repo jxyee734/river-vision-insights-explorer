@@ -18,13 +18,13 @@ interface RoboflowResponse {
   };
 }
 
-const ROBOFLOW_API_KEY = "rJMJV2iPeGELo9CaJi9a";
+const ROBOFLOW_API_KEY = "hqoayI9gLjP3qmVGXdIf";
 
 export const detectTrashInImage = async (imageData: string): Promise<RoboflowResponse> => {
   try {
     const response = await axios({
       method: "POST",
-      url: "https://serverless.roboflow.com/ocean-plastics-waste-detection-float-plastics/1",
+      url: "https://detect.roboflow.com/ocean-plastics-waste-detection-float-plastics/1",
       params: {
         api_key: ROBOFLOW_API_KEY
       },

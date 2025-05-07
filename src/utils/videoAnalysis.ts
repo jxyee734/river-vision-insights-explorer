@@ -70,22 +70,14 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
       
       if (window.updateProcessingStage) window.updateProcessingStage(1);
       
-      const frameBase64 = extractVideoFrame(video);
-      
-      // Create a temporary image
-      const img = new Image();
-      img.src = frameBase64;
-      await new Promise<void>((resolve) => {
-        img.onload = () => resolve();
-      });
-      
+      // Directly capture frame from video element to a canvas
       const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
       const ctx = canvas.getContext('2d');
       
       if (ctx) {
-        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         frames.push(frameData);
         
@@ -103,44 +95,43 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
         
         previousFrameData = frameData;
         
-        // Analyze frame with both Gemini and Roboflow
+        // Get frame as base64 for Roboflow API
+        const frameBase64 = canvas.toDataURL('image/jpeg').split(',')[1];
+        
         if (window.updateProcessingStage) window.updateProcessingStage(2);
         
-        const [geminiResult, roboflowResult] = await Promise.all([
-          analyzeImage(frameBase64, 
-            "Analyze this river frame and identify any trash or pollution. Return a JSON with: count (number of trash items), categories (array of types like 'plastic', 'metal'), and analysis (brief environmental impact). Be accurate and conservative in counting."
-          ),
-          detectTrashInImage(frameBase64)
-        ]);
-        
-        // If trash is detected, draw bounding boxes and store the annotated image
-        if ((geminiResult && geminiResult.count > 0) || 
-            (roboflowResult && roboflowResult.predictions && roboflowResult.predictions.length > 0)) {
-          if (roboflowResult && roboflowResult.predictions) {
+        // Analyze directly with Roboflow API using the new API key
+        try {
+          const roboflowResult = await detectTrashInImage(frameBase64);
+          
+          // If trash is detected, draw bounding boxes and store the annotated image
+          if (roboflowResult && roboflowResult.predictions && roboflowResult.predictions.length > 0) {
             const annotatedImage = drawDetections(canvas, roboflowResult.predictions);
             trashDetectionImages.push(annotatedImage);
-          } else {
-            trashDetectionImages.push(frameBase64);
+            
+            // Add Roboflow detections
+            totalTrashCount += roboflowResult.predictions.length;
+            roboflowResult.predictions.forEach(prediction => {
+              allCategories.add(prediction.class);
+            });
           }
+        } catch (error) {
+          console.error('Roboflow API error:', error);
         }
         
-        // Combine results from both APIs
-        if (geminiResult) {
-          totalTrashCount += geminiResult.count || 0;
-          if (geminiResult.categories) {
-            geminiResult.categories.forEach(cat => allCategories.add(cat));
+        // Also get analysis from Gemini for environmental impact
+        try {
+          const geminiResult = await analyzeImage(canvas.toDataURL(), 
+            "Analyze this river frame and identify any trash or pollution. Return a JSON with: count (number of trash items), categories (array of types like 'plastic', 'metal'), and analysis (brief environmental impact). Be accurate and conservative in counting."
+          );
+          
+          if (geminiResult) {
+            if (geminiResult.analysis && !environmentalAnalysis) {
+              environmentalAnalysis = geminiResult.analysis;
+            }
           }
-          if (geminiResult.analysis && !environmentalAnalysis) {
-            environmentalAnalysis = geminiResult.analysis;
-          }
-        }
-        
-        // Add Roboflow detections
-        if (roboflowResult && roboflowResult.predictions) {
-          totalTrashCount += roboflowResult.predictions.length;
-          roboflowResult.predictions.forEach(prediction => {
-            allCategories.add(prediction.class);
-          });
+        } catch (error) {
+          console.error('Gemini API error:', error);
         }
         
         const depthEstimate = estimateDepthFromImage(frameData);
