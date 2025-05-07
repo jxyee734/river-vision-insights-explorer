@@ -157,9 +157,9 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
         ? { status: 'Fair', color: 'yellow-500' } 
         : { status: 'Good', color: 'green-500' };
       
-      // Return analysis result
+      // Return analysis result with timestamp as Date object
       return {
-        timestamp: new Date().toISOString(),
+        timestamp: new Date(),
         flowVelocity,
         flowDirection,
         trashCount,
@@ -433,7 +433,10 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
                       {recentResults.map((result, index) => (
                         <div key={index} className="flex justify-between text-xs">
                           <span className="text-muted-foreground">
-                            {new Date(result.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}
+                            {result.timestamp instanceof Date 
+                              ? result.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})
+                              : new Date(result.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})
+                            }
                           </span>
                           <span className={result.flowVelocity > averageFlowVelocity ? 'text-blue-500' : ''}>
                             {result.flowVelocity.toFixed(2)} m/s
@@ -478,7 +481,10 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
                         {recentResults.map((result, index) => (
                           <div key={index} className="flex justify-between text-xs">
                             <span className="text-muted-foreground">
-                              {new Date(result.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}
+                              {result.timestamp instanceof Date 
+                                ? result.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})
+                                : new Date(result.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})
+                              }
                             </span>
                             <span className={result.trashCount > 0 ? 'text-red-500' : ''}>
                               {result.trashCount} items
@@ -517,7 +523,10 @@ const LivestreamAnalysisPanel: React.FC<LivestreamAnalysisPanelProps> = ({
               loading="lazy"
             />
             <div className="absolute bottom-2 right-2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded">
-              {new Date(latestResult.timestamp).toLocaleTimeString()}
+              {latestResult.timestamp instanceof Date 
+                ? latestResult.timestamp.toLocaleTimeString()
+                : new Date(latestResult.timestamp).toLocaleTimeString()
+              }
             </div>
           </div>
         </div>
