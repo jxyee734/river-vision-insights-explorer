@@ -129,9 +129,6 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
     URL.revokeObjectURL(video.src);
     
     return {
-      averageDepth: 0,
-      maxDepth: 0,
-      depthProfile: [],
       averageVelocity: Number(averageFlowMagnitude.toFixed(2)),
       flowMagnitude: Number((averageFlowMagnitude * 2).toFixed(2)),
       trashCount: totalTrashCount,
