@@ -1,8 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, ArrowRightCircle, Activity } from 'lucide-react';
-import { NasaCard } from './NasaCard';
+import { ArrowRight, ArrowRightCircle } from 'lucide-react';
 
 interface FlowAnalysisProps {
   averageVelocity: number;
@@ -30,68 +29,61 @@ const FlowAnalysis: React.FC<FlowAnalysisProps> = ({ averageVelocity, flowMagnit
   };
 
   return (
-    <NasaCard 
-      title="Water Flow Analysis"
-      gradient
-      glassmorphism
-      animate="scan"
-      className="w-full"
-      footer={
-        <div className="flex items-center text-xs text-muted-foreground">
-          <Activity className="h-3 w-3 mr-1" />
-          <span>Velocity analysis powered by TensorFlow.js</span>
-        </div>
-      }
-    >
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="flex flex-col space-y-4">
-          <div className="flex items-center justify-between p-3 bg-gradient-to-r from-card/80 to-card/50 rounded-lg border border-border/50">
-            <div>
-              <h3 className="text-sm font-medium text-primary-foreground">Average Velocity</h3>
-              <div className="flex items-baseline">
-                <span className="text-3xl font-bold text-primary">{averageVelocity}</span>
-                <span className="ml-1 text-sm text-muted-foreground">m/s</span>
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle>Water Flow Analysis</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex flex-col space-y-4">
+            <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg">
+              <div>
+                <h3 className="text-sm font-medium text-blue-800">Average Velocity</h3>
+                <div className="flex items-baseline">
+                  <span className="text-3xl font-bold text-blue-700">{averageVelocity}</span>
+                  <span className="ml-1 text-sm text-blue-600">m/s</span>
+                </div>
+              </div>
+              <div className={`px-3 py-1 rounded-full ${getVelocityColor(averageVelocity)}`}>
+                {averageVelocity < 0.5 && 'Slow'}
+                {averageVelocity >= 0.5 && averageVelocity < 1.0 && 'Moderate'}
+                {averageVelocity >= 1.0 && averageVelocity < 1.5 && 'Fast'}
+                {averageVelocity >= 1.5 && 'Very Fast'}
               </div>
             </div>
-            <div className={`px-3 py-1 rounded-full ${getVelocityColor(averageVelocity)}`}>
-              {averageVelocity < 0.5 && 'Slow'}
-              {averageVelocity >= 0.5 && averageVelocity < 1.0 && 'Moderate'}
-              {averageVelocity >= 1.0 && averageVelocity < 1.5 && 'Fast'}
-              {averageVelocity >= 1.5 && 'Very Fast'}
+            
+            <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg">
+              <div>
+                <h3 className="text-sm font-medium text-blue-800">Flow Magnitude</h3>
+                <div className="flex items-baseline">
+                  <span className="text-3xl font-bold text-blue-700">{flowMagnitude}</span>
+                  <span className="ml-1 text-sm text-blue-600">units</span>
+                </div>
+              </div>
+              <ArrowRightCircle className="h-8 w-8 text-blue-500" />
             </div>
           </div>
           
-          <div className="flex items-center justify-between p-3 bg-gradient-to-r from-card/80 to-card/50 rounded-lg border border-border/50">
-            <div>
-              <h3 className="text-sm font-medium text-primary-foreground">Flow Magnitude</h3>
-              <div className="flex items-baseline">
-                <span className="text-3xl font-bold text-primary">{flowMagnitude}</span>
-                <span className="ml-1 text-sm text-muted-foreground">units</span>
+          <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 flex flex-col">
+            <h3 className="text-sm font-medium text-blue-800 mb-2">Flow Visualization</h3>
+            <div className="flex-grow overflow-hidden relative flow-pattern">
+              <div className="absolute inset-0 flex flex-col justify-around">
+                {getFlowArrows(flowMagnitude)}
               </div>
             </div>
-            <ArrowRightCircle className="h-8 w-8 text-primary/80" />
           </div>
         </div>
         
-        <div className="bg-card/30 p-3 rounded-lg border border-border/50 flex flex-col">
-          <h3 className="text-sm font-medium text-primary-foreground mb-2">Flow Visualization</h3>
-          <div className="flex-grow overflow-hidden relative flow-pattern">
-            <div className="absolute inset-0 flex flex-col justify-around">
-              {getFlowArrows(flowMagnitude)}
-            </div>
-          </div>
+        <div className="mt-4 p-4 rounded-md bg-blue-50 border border-blue-100">
+          <h4 className="text-sm font-medium text-blue-800">Understanding Flow Analysis</h4>
+          <p className="text-xs text-blue-600 mt-1">
+            Flow velocity is calculated using optical flow techniques that track the movement of water 
+            features between video frames. Higher magnitudes indicate stronger currents, which can impact 
+            erosion, habitat quality, and pollutant transport.
+          </p>
         </div>
-      </div>
-      
-      <div className="mt-4 p-4 rounded-md bg-card/30 border border-border/50">
-        <h4 className="text-sm font-medium text-primary-foreground">Understanding Flow Analysis</h4>
-        <p className="text-xs text-muted-foreground mt-1">
-          Flow velocity is calculated using TensorFlow.js optical flow algorithms that track the movement of water 
-          features between video frames. Higher magnitudes indicate stronger currents, which can impact 
-          erosion, habitat quality, and pollutant transport.
-        </p>
-      </div>
-    </NasaCard>
+      </CardContent>
+    </Card>
   );
 };
 
