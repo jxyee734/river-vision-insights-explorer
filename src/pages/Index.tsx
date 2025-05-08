@@ -144,7 +144,10 @@ const Index = () => {
                   <div className="p-4">
                     <TabsContent value="video">
                       {analysisResult.videoUrl && (
-                        <VideoPlayer videoUrl={analysisResult.videoUrl} />
+                        <VideoPlayer 
+                          videoUrl={analysisResult.videoUrl} 
+                          trashDetections={analysisResult.trashDetections}
+                        />
                       )}
                     </TabsContent>
                     

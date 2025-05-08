@@ -1,3 +1,4 @@
+
 import { analyzeImage, extractVideoFrame, delay, GeminiResponse } from '../services/geminiService';
 import { detectTrashInImage } from '../services/roboflowService';
 import type { AnalysisResult } from '../types/analysis';
@@ -17,6 +18,10 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
   
   const frames: ImageData[] = [];
   const trashDetectionImages: string[] = [];
+  const trashDetections: Array<{
+    timestamp: number;
+    detections: Array<any>;
+  }> = [];
   let trashAnalysis: GeminiResponse | null = null;
   let totalTrashCount = 0;
   let allCategories: Set<string> = new Set();
@@ -73,6 +78,12 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
         
         // If trash is detected, draw bounding boxes and store the annotated image
         if (roboflowResult && roboflowResult.predictions && roboflowResult.predictions.length > 0) {
+          // Store detections with their timestamp
+          trashDetections.push({
+            timestamp: currentTime,
+            detections: roboflowResult.predictions
+          });
+          
           const annotatedImage = drawDetections(canvas, roboflowResult.predictions);
           trashDetectionImages.push(annotatedImage);
           
@@ -106,7 +117,8 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
       frames,
       trashDetectionImages,
       flowVectors,
-      videoUrl // Include the video URL in the result
+      videoUrl,
+      trashDetections
     };
   } catch (error) {
     console.error("Error analyzing video:", error);
