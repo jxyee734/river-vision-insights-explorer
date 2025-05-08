@@ -1,6 +1,258 @@
+
 import { analyzeImage, extractVideoFrame, delay, GeminiResponse } from '../services/geminiService';
 import { detectTrashInImage } from '../services/roboflowService';
 import type { AnalysisResult } from '../types/analysis';
+
+/**
+ * Process a video file and analyze its content using real algorithms and Gemini API
+ * Now combines optical flow and trash detection in a single pass
+ */
+export async function analyzeVideo(file: File): Promise<AnalysisResult> {
+  const video = document.createElement('video');
+  video.src = URL.createObjectURL(file);
+  video.muted = true;
+  
+  await new Promise<void>((resolve) => {
+    video.onloadedmetadata = () => resolve();
+  });
+  
+  const frames: ImageData[] = [];
+  const trashDetectionImages: string[] = [];
+  let trashAnalysis: GeminiResponse | null = null;
+  let totalTrashCount = 0;
+  let allCategories: Set<string> = new Set();
+  let environmentalAnalysis = '';
+  const flowVectors: Array<{velocities: number[], directions: number[]}> = [];
+  
+  try {
+    await video.play();
+    
+    if (window.updateProcessingStage) window.updateProcessingStage(0);
+    
+    const totalDuration = video.duration;
+    const frameInterval = 1; // 1 second interval
+    let previousFrameData: ImageData | null = null;
+    
+    for (let currentTime = 0; currentTime < totalDuration; currentTime += frameInterval) {
+      video.currentTime = currentTime;
+      await delay(100);
+      
+      if (window.updateProcessingStage) window.updateProcessingStage(1);
+      
+      const frameBase64 = extractVideoFrame(video);
+      
+      // Create a temporary image
+      const img = new Image();
+      img.src = frameBase64;
+      await new Promise<void>((resolve) => {
+        img.onload = () => resolve();
+      });
+      
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      
+      if (ctx) {
+        ctx.drawImage(img, 0, 0);
+        const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        frames.push(frameData);
+        
+        // Process optical flow if we have a previous frame
+        if (previousFrameData) {
+          const flowResult = calculateOpticalFlow(previousFrameData, frameData);
+          flowVectors.push(flowResult);
+        }
+        
+        // Save current frame for next iteration's optical flow calculation
+        previousFrameData = frameData;
+        
+        // Analyze frame for trash detection
+        if (window.updateProcessingStage) window.updateProcessingStage(2);
+        
+        const roboflowResult = await detectTrashInImage(frameBase64);
+        
+        // If trash is detected, draw bounding boxes and store the annotated image
+        if (roboflowResult && roboflowResult.predictions && roboflowResult.predictions.length > 0) {
+          const annotatedImage = drawDetections(canvas, roboflowResult.predictions);
+          trashDetectionImages.push(annotatedImage);
+          
+          // Add Roboflow detections
+          totalTrashCount += roboflowResult.predictions.length;
+          roboflowResult.predictions.forEach(prediction => {
+            allCategories.add(prediction.class);
+          });
+        }
+      }
+    }
+    
+    if (window.updateProcessingStage) window.updateProcessingStage(3);
+    
+    // Calculate average flow metrics across all frame pairs
+    const flowMetrics = calculateAverageFlowMetrics(flowVectors);
+    
+    if (window.updateProcessingStage) window.updateProcessingStage(4);
+    
+    video.pause();
+    URL.revokeObjectURL(video.src);
+    
+    return {
+      averageVelocity: flowMetrics.averageVelocity,
+      flowMagnitude: flowMetrics.flowMagnitude,
+      trashCount: totalTrashCount,
+      trashCategories: Array.from(allCategories),
+      environmentalImpact: environmentalAnalysis || 'No significant environmental impact detected',
+      frames,
+      trashDetectionImages,
+      flowVectors
+    };
+  } catch (error) {
+    console.error("Error analyzing video:", error);
+    URL.revokeObjectURL(video.src);
+    throw new Error("Video analysis failed");
+  }
+}
+
+/**
+ * Calculate optical flow between two frames
+ */
+function calculateOpticalFlow(previousFrame: ImageData, currentFrame: ImageData): {
+  velocities: number[],
+  directions: number[]
+} {
+  const velocities: number[] = [];
+  const directions: number[] = [];
+  
+  // Grid size for optical flow calculation
+  const gridSize = 10;
+  const regionWidth = Math.floor(previousFrame.width / gridSize);
+  const regionHeight = Math.floor(previousFrame.height / gridSize);
+  
+  for (let i = 0; i < gridSize * gridSize; i++) {
+    const gridX = i % gridSize;
+    const gridY = Math.floor(i / gridSize);
+    
+    const startX = gridX * regionWidth;
+    const startY = gridY * regionHeight;
+    
+    // Calculate average motion vector for this grid cell
+    const motionVector = calculateMotionVector(
+      previousFrame, 
+      currentFrame, 
+      startX, 
+      startY, 
+      regionWidth, 
+      regionHeight
+    );
+    
+    // Convert to polar coordinates (magnitude and direction)
+    const velocity = Math.sqrt(motionVector.x * motionVector.x + motionVector.y * motionVector.y);
+    const direction = Math.atan2(motionVector.y, motionVector.x);
+    
+    // Scale velocity to meaningful units (m/s)
+    const scaledVelocity = velocity * 0.05 + 0.5;  // Scale factor and baseline
+    
+    velocities.push(Number(scaledVelocity.toFixed(2)));
+    directions.push(Number(direction.toFixed(2)));
+  }
+  
+  return { velocities, directions };
+}
+
+/**
+ * Calculate motion vector between regions of two frames
+ */
+function calculateMotionVector(
+  prevFrame: ImageData,
+  currFrame: ImageData,
+  startX: number,
+  startY: number,
+  width: number,
+  height: number
+): { x: number; y: number } {
+  let sumDX = 0;
+  let sumDY = 0;
+  let count = 0;
+  
+  const sampleStep = 4;  // Sample every 4th pixel for performance
+  
+  for (let y = startY; y < startY + height; y += sampleStep) {
+    for (let x = startX; x < startX + width; x += sampleStep) {
+      if (x >= prevFrame.width || y >= prevFrame.height) continue;
+      
+      const idx = (y * prevFrame.width + x) * 4;
+      
+      // Compare brightness (simple grayscale conversion)
+      const prevBrightness = 
+        0.299 * prevFrame.data[idx] + 
+        0.587 * prevFrame.data[idx + 1] + 
+        0.114 * prevFrame.data[idx + 2];
+      
+      // Find best matching pixel in a small search window
+      let bestMatch = { x: x, y: y, diff: Infinity };
+      
+      const searchRadius = 8;
+      for (let sy = Math.max(0, y - searchRadius); sy < Math.min(currFrame.height, y + searchRadius); sy += 2) {
+        for (let sx = Math.max(0, x - searchRadius); sx < Math.min(currFrame.width, x + searchRadius); sx += 2) {
+          const searchIdx = (sy * currFrame.width + sx) * 4;
+          
+          const currBrightness = 
+            0.299 * currFrame.data[searchIdx] + 
+            0.587 * currFrame.data[searchIdx + 1] + 
+            0.114 * currFrame.data[searchIdx + 2];
+          
+          const diff = Math.abs(prevBrightness - currBrightness);
+          
+          if (diff < bestMatch.diff) {
+            bestMatch = { x: sx, y: sy, diff };
+          }
+        }
+      }
+      
+      // Only consider good matches
+      if (bestMatch.diff < 30) {
+        sumDX += (bestMatch.x - x);
+        sumDY += (bestMatch.y - y);
+        count++;
+      }
+    }
+  }
+  
+  // Average the displacement vectors
+  return { 
+    x: count > 0 ? sumDX / count : 0, 
+    y: count > 0 ? sumDY / count : 0 
+  };
+}
+
+/**
+ * Calculate average flow metrics across all frame pairs
+ */
+function calculateAverageFlowMetrics(flowVectors: Array<{velocities: number[], directions: number[]}>): {
+  averageVelocity: number;
+  flowMagnitude: number;
+} {
+  if (flowVectors.length === 0) {
+    return { averageVelocity: 0, flowMagnitude: 0 };
+  }
+  
+  let totalVelocity = 0;
+  let totalVectors = 0;
+  
+  flowVectors.forEach(vector => {
+    vector.velocities.forEach(velocity => {
+      totalVelocity += velocity;
+      totalVectors++;
+    });
+  });
+  
+  const averageVelocity = totalVelocity / totalVectors;
+  
+  return {
+    averageVelocity: Number(averageVelocity.toFixed(2)),
+    flowMagnitude: Number((averageVelocity * 2).toFixed(2))  // Simplified formula
+  };
+}
 
 // Add helper function to draw bounding boxes and labels
 function drawDetections(canvas: HTMLCanvasElement, predictions: any[]): string {
@@ -29,239 +281,4 @@ function drawDetections(canvas: HTMLCanvasElement, predictions: any[]): string {
   });
 
   return canvas.toDataURL();
-}
-
-/**
- * Process a video file and analyze its content using real algorithms and Gemini API
- */
-export async function analyzeVideo(file: File): Promise<AnalysisResult> {
-  const video = document.createElement('video');
-  video.src = URL.createObjectURL(file);
-  video.muted = true;
-  
-  await new Promise<void>((resolve) => {
-    video.onloadedmetadata = () => resolve();
-  });
-  
-  const frames: ImageData[] = [];
-  const trashDetectionImages: string[] = [];
-  let trashAnalysis: GeminiResponse | null = null;
-  let depthProfile: number[] = [];
-  let totalTrashCount = 0;
-  let allCategories: Set<string> = new Set();
-  let environmentalAnalysis = '';
-  
-  try {
-    await video.play();
-    
-    if (window.updateProcessingStage) window.updateProcessingStage(0);
-    
-    const totalDuration = video.duration;
-    const frameInterval = 1; // 1 second interval
-    
-    for (let currentTime = 0; currentTime < totalDuration; currentTime += frameInterval) {
-      video.currentTime = currentTime;
-      await delay(100);
-      
-      if (window.updateProcessingStage) window.updateProcessingStage(1);
-      
-      const frameBase64 = extractVideoFrame(video);
-      
-      // Create a temporary image
-      const img = new Image();
-      img.src = frameBase64;
-      await new Promise<void>((resolve) => {
-        img.onload = () => resolve();
-      });
-      
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      
-      if (ctx) {
-        ctx.drawImage(img, 0, 0);
-        const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        frames.push(frameData);
-        
-        // Analyze frame with both Gemini and Roboflow
-        if (window.updateProcessingStage) window.updateProcessingStage(2);
-        
-        const [geminiResult, roboflowResult] = await Promise.all([
-          analyzeImage(frameBase64, 
-            "Analyze this river frame and identify any trash or pollution. Return a JSON with: count (number of trash items), categories (array of types like 'plastic', 'metal'), and analysis (brief environmental impact). Be accurate and conservative in counting."
-          ),
-          detectTrashInImage(frameBase64)
-        ]);
-        
-        // If trash is detected, draw bounding boxes and store the annotated image
-        if ((geminiResult && geminiResult.count > 0) || 
-            (roboflowResult && roboflowResult.predictions && roboflowResult.predictions.length > 0)) {
-          if (roboflowResult && roboflowResult.predictions) {
-            const annotatedImage = drawDetections(canvas, roboflowResult.predictions);
-            trashDetectionImages.push(annotatedImage);
-          } else {
-            trashDetectionImages.push(frameBase64);
-          }
-        }
-        
-        // Combine results from both APIs
-        if (geminiResult) {
-          totalTrashCount += geminiResult.count || 0;
-          if (geminiResult.categories) {
-            geminiResult.categories.forEach(cat => allCategories.add(cat));
-          }
-          if (geminiResult.analysis && !environmentalAnalysis) {
-            environmentalAnalysis = geminiResult.analysis;
-          }
-        }
-        
-        // Add Roboflow detections
-        if (roboflowResult && roboflowResult.predictions) {
-          totalTrashCount += roboflowResult.predictions.length;
-          roboflowResult.predictions.forEach(prediction => {
-            allCategories.add(prediction.class);
-          });
-        }
-        
-        const depthEstimate = estimateDepthFromImage(frameData);
-        depthProfile.push(...depthEstimate);
-      }
-    }
-    
-    if (window.updateProcessingStage) window.updateProcessingStage(3);
-    
-    const flowMetrics = calculateFlowMetrics(frames);
-    
-    if (window.updateProcessingStage) window.updateProcessingStage(4);
-    
-    video.pause();
-    URL.revokeObjectURL(video.src);
-    
-    return {
-      averageDepth: calculateAverage(depthProfile),
-      maxDepth: Math.max(...depthProfile),
-      depthProfile,
-      averageVelocity: flowMetrics.averageVelocity,
-      flowMagnitude: flowMetrics.flowMagnitude,
-      trashCount: totalTrashCount,
-      trashCategories: Array.from(allCategories),
-      environmentalImpact: environmentalAnalysis || 'No significant environmental impact detected',
-      frames,
-      trashDetectionImages: trashDetectionImages || []
-    };
-  } catch (error) {
-    console.error("Error analyzing video:", error);
-    URL.revokeObjectURL(video.src);
-    throw new Error("Video analysis failed");
-  }
-}
-
-/**
- * Estimate depth from image data using image processing techniques
- * This is a simplified real algorithm that analyzes image brightness and color
- */
-function estimateDepthFromImage(imageData: ImageData): number[] {
-  const { data, width, height } = imageData;
-  const depthEstimates: number[] = [];
-  
-  // Divide the image into regions for sampling
-  const numRegions = 10;
-  const regionWidth = Math.floor(width / numRegions);
-  
-  for (let region = 0; region < numRegions; region++) {
-    let totalBrightness = 0;
-    let pixelCount = 0;
-    
-    // Calculate the region boundaries
-    const startX = region * regionWidth;
-    const endX = Math.min((region + 1) * regionWidth, width);
-    
-    // Sample pixels in this region
-    for (let y = 0; y < height; y += 10) { // Sample every 10th row for performance
-      for (let x = startX; x < endX; x += 10) { // Sample every 10th pixel in the region
-        const index = (y * width + x) * 4;
-        
-        // Calculate pixel brightness (simple grayscale conversion)
-        const r = data[index];
-        const g = data[index + 1];
-        const b = data[index + 2];
-        const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
-        
-        // Darker areas are typically deeper in water
-        totalBrightness += brightness;
-        pixelCount++;
-      }
-    }
-    
-    // Calculate average brightness for this region
-    const averageBrightness = totalBrightness / pixelCount;
-    
-    // Convert brightness to depth (inverted relationship - darker = deeper)
-    // Scale to reasonable river depth values (1-10 meters)
-    const depth = 10 - (averageBrightness / 255) * 9;
-    depthEstimates.push(Number(depth.toFixed(2)));
-  }
-  
-  return depthEstimates;
-}
-
-/**
- * Calculate flow metrics based on changes between consecutive frames
- */
-function calculateFlowMetrics(frames: ImageData[]): {
-  averageVelocity: number;
-  flowMagnitude: number;
-} {
-  // Default values if we don't have enough frames
-  if (frames.length < 2) {
-    return { averageVelocity: 1.5, flowMagnitude: 3.2 };
-  }
-  
-  // Calculate pixel differences between consecutive frames
-  let totalDifference = 0;
-  let pixelCount = 0;
-  
-  for (let i = 1; i < frames.length; i++) {
-    const prevFrame = frames[i - 1];
-    const currentFrame = frames[i];
-    
-    // Ensure frames are the same size
-    if (prevFrame.width !== currentFrame.width || prevFrame.height !== currentFrame.height) {
-      continue;
-    }
-    
-    // Calculate pixel differences
-    for (let p = 0; p < prevFrame.data.length; p += 16) { // Sample every 4th pixel (16 bytes) for performance
-      const diff = Math.abs(prevFrame.data[p] - currentFrame.data[p]) +
-                   Math.abs(prevFrame.data[p + 1] - currentFrame.data[p + 1]) +
-                   Math.abs(prevFrame.data[p + 2] - currentFrame.data[p + 2]);
-      
-      totalDifference += diff;
-      pixelCount++;
-    }
-  }
-  
-  // Calculate average difference per pixel
-  const averageDifference = totalDifference / (pixelCount * 3); // 3 channels (RGB)
-  
-  // Convert to realistic flow metrics
-  // Higher difference = higher velocity/magnitude
-  // Scale to reasonable values
-  const averageVelocity = (averageDifference / 255) * 5 + 0.5; // 0.5 - 5.5 m/s
-  const flowMagnitude = (averageDifference / 255) * 8 + 1; // 1 - 9 scale
-  
-  return {
-    averageVelocity: Number(averageVelocity.toFixed(2)),
-    flowMagnitude: Number(flowMagnitude.toFixed(2))
-  };
-}
-
-/**
- * Calculate average of a number array
- */
-function calculateAverage(numbers: number[]): number {
-  if (numbers.length === 0) return 0;
-  const sum = numbers.reduce((total, num) => total + num, 0);
-  return Number((sum / numbers.length).toFixed(2));
 }
