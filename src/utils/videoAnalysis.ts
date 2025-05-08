@@ -34,7 +34,8 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
     if (window.updateProcessingStage) window.updateProcessingStage(0);
     
     const totalDuration = video.duration;
-    const frameInterval = 1; // 1 second interval
+    // Sample more frames for better heatmap data
+    const frameInterval = totalDuration > 10 ? 0.5 : 0.3; // Adjust sampling rate based on video length
     let previousFrameData: ImageData | null = null;
     
     for (let currentTime = 0; currentTime < totalDuration; currentTime += frameInterval) {
@@ -74,7 +75,8 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
         // Analyze frame for trash detection
         if (window.updateProcessingStage) window.updateProcessingStage(2);
         
-        const roboflowResult = await detectTrashInImage(frameBase64);
+        // Use higher confidence threshold for more accurate detections
+        const roboflowResult = await detectTrashInImage(frameBase64, 0.45);
         
         // If trash is detected, draw bounding boxes and store the annotated image
         if (roboflowResult && roboflowResult.predictions && roboflowResult.predictions.length > 0) {
@@ -83,9 +85,6 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
             timestamp: currentTime,
             detections: roboflowResult.predictions
           });
-          
-          const annotatedImage = drawDetections(canvas, roboflowResult.predictions);
-          trashDetectionImages.push(annotatedImage);
           
           // Add Roboflow detections
           totalTrashCount += roboflowResult.predictions.length;
@@ -273,25 +272,30 @@ function drawDetections(canvas: HTMLCanvasElement, predictions: any[]): string {
   const ctx = canvas.getContext('2d');
   if (!ctx) return canvas.toDataURL();
 
-  // Style for the bounding boxes
-  ctx.strokeStyle = '#00ff00';
-  ctx.lineWidth = 3;
-  ctx.font = '16px Arial';
-  ctx.fillStyle = '#00ff00';
+  // Style for the bounding boxes - enhanced for better visibility
+  ctx.strokeStyle = '#ff0000';
+  ctx.lineWidth = 4; 
+  ctx.font = 'bold 16px Arial';
+  ctx.fillStyle = '#ff0000';
 
   predictions.forEach(prediction => {
     const x = prediction.x - prediction.width / 2;
     const y = prediction.y - prediction.height / 2;
     
-    // Draw the box
+    // Draw the box with thicker lines
     ctx.strokeRect(x, y, prediction.width, prediction.height);
     
-    // Draw the label with confidence
+    // Draw semi-transparent fill
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+    ctx.fillRect(x, y, prediction.width, prediction.height);
+    
+    // Draw the label with better contrast
     const label = `${prediction.class} ${Math.round(prediction.confidence * 100)}%`;
-    ctx.fillRect(x, y - 20, ctx.measureText(label).width + 10, 20);
-    ctx.fillStyle = '#000000';
-    ctx.fillText(label, x + 5, y - 5);
-    ctx.fillStyle = '#00ff00';
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+    ctx.fillRect(x, y - 25, ctx.measureText(label).width + 10, 22);
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(label, x + 5, y - 10);
   });
 
   return canvas.toDataURL();
