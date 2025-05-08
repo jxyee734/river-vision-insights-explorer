@@ -6,7 +6,7 @@ import UploadSection from '@/components/UploadSection';
 import FlowAnalysis from '@/components/FlowAnalysis';
 import TrashDetection from '@/components/TrashDetection';
 import ProcessingVisualization from '@/components/ProcessingVisualization';
-import OpticalFlowVisualization from '@/components/OpticalFlowVisualization';
+import VideoPlayer from '@/components/VideoPlayer';
 import { analyzeVideo } from '@/utils/videoAnalysis';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CloudLightning, FileVideo } from "lucide-react";
@@ -26,9 +26,8 @@ const Index = () => {
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
-  const [activeTab, setActiveTab] = useState(tabParam || 'flow');
+  const [activeTab, setActiveTab] = useState(tabParam || 'video');
   const [processingStage, setProcessingStage] = useState(0);
-  const [selectedFrameIndex, setSelectedFrameIndex] = useState(1);
   
   // Update URL when tab changes
   const handleTabChange = (value: string) => {
@@ -57,11 +56,6 @@ const Index = () => {
       const result = await analyzeVideo(file);
       setAnalysisResult(result);
       
-      // Set default selected frame for optical flow visualization
-      if (result.frames && result.frames.length > 1) {
-        setSelectedFrameIndex(1);
-      }
-
       toast.success("Video analysis complete!");
     } catch (error) {
       console.error("Error processing video:", error);
@@ -142,46 +136,24 @@ const Index = () => {
               <div className="bg-white rounded-lg shadow">
                 <Tabs value={activeTab} onValueChange={handleTabChange}>
                   <TabsList className="w-full border-b">
-                    <TabsTrigger value="flow">Optical Flow</TabsTrigger>
+                    <TabsTrigger value="video">Video Analysis</TabsTrigger>
+                    <TabsTrigger value="flow">Flow Data</TabsTrigger>
                     <TabsTrigger value="trash">Trash Detection</TabsTrigger>
-                    <TabsTrigger value="combined">Combined Analysis</TabsTrigger>
                   </TabsList>
                   
                   <div className="p-4">
+                    <TabsContent value="video">
+                      {analysisResult.videoUrl && (
+                        <VideoPlayer videoUrl={analysisResult.videoUrl} />
+                      )}
+                    </TabsContent>
+                    
                     <TabsContent value="flow">
-                      <div className="space-y-4">
-                        {analysisResult.frames.length > 1 && analysisResult.flowVectors.length > 0 && (
-                          <div>
-                            <OpticalFlowVisualization
-                              previousFrame={analysisResult.frames[selectedFrameIndex - 1]}
-                              currentFrame={analysisResult.frames[selectedFrameIndex]}
-                              flowVectors={analysisResult.flowVectors[selectedFrameIndex - 1]}
-                            />
-                            <div className="mt-4">
-                              <label htmlFor="frame-selector" className="block text-sm font-medium text-gray-700 mb-1">
-                                Select Frame Pair:
-                              </label>
-                              <input 
-                                id="frame-selector"
-                                type="range"
-                                min={1}
-                                max={analysisResult.frames.length - 1}
-                                value={selectedFrameIndex}
-                                onChange={(e) => setSelectedFrameIndex(parseInt(e.target.value))}
-                                className="w-full"
-                              />
-                              <p className="text-xs text-gray-500 mt-1">
-                                Frame pair {selectedFrameIndex} of {analysisResult.frames.length - 1}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                        <FlowAnalysis 
-                          averageVelocity={analysisResult.averageVelocity}
-                          flowMagnitude={analysisResult.flowMagnitude}
-                          flowVectors={analysisResult.flowVectors}
-                        />
-                      </div>
+                      <FlowAnalysis 
+                        averageVelocity={analysisResult.averageVelocity}
+                        flowMagnitude={analysisResult.flowMagnitude}
+                        flowVectors={analysisResult.flowVectors}
+                      />
                     </TabsContent>
                     
                     <TabsContent value="trash">
@@ -191,84 +163,6 @@ const Index = () => {
                         environmentalImpact={analysisResult.environmentalImpact}
                         trashImages={analysisResult.trashDetectionImages}
                       />
-                    </TabsContent>
-                    
-                    <TabsContent value="combined">
-                      <div className="space-y-6">
-                        <h2 className="text-lg font-semibold text-gray-900">Combined Flow & Trash Analysis</h2>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {/* Flow summary */}
-                          <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                            <h3 className="text-md font-medium text-blue-800 mb-2">Water Flow Analysis</h3>
-                            <div className="text-sm space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-blue-700">Average Velocity:</span>
-                                <span className="font-medium">{analysisResult.averageVelocity} m/s</span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-blue-700">Flow Magnitude:</span>
-                                <span className="font-medium">{analysisResult.flowMagnitude} units</span>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Trash summary */}
-                          <div className="bg-green-50 p-4 rounded-lg border border-green-100">
-                            <h3 className="text-md font-medium text-green-800 mb-2">Trash Detection Summary</h3>
-                            <div className="text-sm space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-green-700">Total Items:</span>
-                                <span className="font-medium">{analysisResult.trashCount}</span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-green-700">Categories:</span>
-                                <span className="font-medium">
-                                  {analysisResult.trashCategories.length > 0 
-                                    ? analysisResult.trashCategories.join(', ') 
-                                    : 'None detected'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Sample image with combined visualization */}
-                        {analysisResult.frames.length > 1 && analysisResult.flowVectors.length > 0 && (
-                          <div className="bg-white p-4 rounded-lg border">
-                            <h3 className="text-md font-medium text-gray-800 mb-3">Combined Visualization</h3>
-                            <OpticalFlowVisualization
-                              previousFrame={analysisResult.frames[selectedFrameIndex - 1]}
-                              currentFrame={analysisResult.frames[selectedFrameIndex]}
-                              flowVectors={analysisResult.flowVectors[selectedFrameIndex - 1]}
-                            />
-                            <div className="mt-4">
-                              <input 
-                                type="range"
-                                min={1}
-                                max={analysisResult.frames.length - 1}
-                                value={selectedFrameIndex}
-                                onChange={(e) => setSelectedFrameIndex(parseInt(e.target.value))}
-                                className="w-full"
-                              />
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Impact assessment */}
-                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                          <h3 className="text-md font-medium text-gray-800 mb-2">Environmental Assessment</h3>
-                          <p className="text-sm text-gray-600">
-                            {analysisResult.environmentalImpact}
-                          </p>
-                          <div className="mt-3 text-xs text-gray-500">
-                            The flow velocity can affect how pollutants spread in the water. With a velocity of 
-                            {' '}{analysisResult.averageVelocity} m/s, trash and other pollutants will disperse 
-                            {analysisResult.averageVelocity > 1 ? ' rapidly' : analysisResult.averageVelocity > 0.5 ? ' moderately' : ' slowly'} 
-                            {' '}downstream.
-                          </div>
-                        </div>
-                      </div>
                     </TabsContent>
                   </div>
                 </Tabs>

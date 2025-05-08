@@ -9,4 +9,5 @@ export interface AnalysisResult {
   frames: ImageData[];
   trashDetectionImages: string[];
   flowVectors: Array<{velocities: number[], directions: number[]}>;
+  videoUrl?: string; // URL to the processed video
 }

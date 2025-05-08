@@ -1,4 +1,3 @@
-
 import { analyzeImage, extractVideoFrame, delay, GeminiResponse } from '../services/geminiService';
 import { detectTrashInImage } from '../services/roboflowService';
 import type { AnalysisResult } from '../types/analysis';
@@ -94,7 +93,9 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
     if (window.updateProcessingStage) window.updateProcessingStage(4);
     
     video.pause();
-    URL.revokeObjectURL(video.src);
+    
+    // Store the video URL for playback
+    const videoUrl = URL.createObjectURL(file);
     
     return {
       averageVelocity: flowMetrics.averageVelocity,
@@ -104,7 +105,8 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
       environmentalImpact: environmentalAnalysis || 'No significant environmental impact detected',
       frames,
       trashDetectionImages,
-      flowVectors
+      flowVectors,
+      videoUrl // Include the video URL in the result
     };
   } catch (error) {
     console.error("Error analyzing video:", error);
