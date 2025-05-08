@@ -7,7 +7,7 @@ export interface AnalysisResult {
   trashCategories: string[];
   environmentalImpact: string;
   frames: ImageData[];
-  trashDetectionImages: string[];
+  trashDetectionImages: string[]; // We'll keep this for backward compatibility
   flowVectors: Array<{velocities: number[], directions: number[]}>;
   videoUrl?: string; // URL to the processed video
   trashDetections?: Array<{
@@ -15,10 +15,10 @@ export interface AnalysisResult {
     detections: Array<{
       class: string;
       confidence: number;
-      x: number;
-      y: number;
-      width: number;
-      height: number;
+      x: number; // normalized coordinates (0-1)
+      y: number; // normalized coordinates (0-1)
+      width: number; // normalized width (0-1)
+      height: number; // normalized height (0-1)
     }>;
   }>;
 }

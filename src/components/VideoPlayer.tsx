@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface VideoPlayerProps {
@@ -25,6 +25,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, trashDetections = [
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [visibleTrashCount, setVisibleTrashCount] = useState(0);
 
   useEffect(() => {
     if (videoRef.current) {
@@ -81,13 +82,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, trashDetections = [
       if (currentDetections?.detections.length) {
         // Draw bounding boxes for current detections
         drawBoundingBoxes(ctx, currentDetections.detections, video.clientWidth, video.clientHeight);
+        // Update trash count
+        setVisibleTrashCount(currentDetections.detections.length);
+      } else {
+        setVisibleTrashCount(0);
       }
     };
 
     const findNearestDetections = (time: number) => {
       // Find the detection data for the closest timestamp
       return trashDetections.reduce((closest, current) => {
-        if (closest === null) return current;
+        if (!closest) return current;
         return Math.abs(current.timestamp - time) < Math.abs(closest.timestamp - time) ? current : closest;
       }, null as any);
     };
@@ -100,23 +105,25 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, trashDetections = [
     ) => {
       // Style for the bounding boxes
       ctx.strokeStyle = '#00ff00';
-      ctx.lineWidth = 2;
-      ctx.font = '14px Arial';
+      ctx.lineWidth = 3;
+      ctx.font = '16px Arial';
       
       detections.forEach(detection => {
         // Convert normalized coordinates to canvas coordinates
-        const x = detection.x - detection.width / 2;
-        const y = detection.y - detection.height / 2;
+        const x = detection.x * canvasWidth - (detection.width * canvasWidth) / 2;
+        const y = detection.y * canvasHeight - (detection.height * canvasHeight) / 2;
+        const width = detection.width * canvasWidth;
+        const height = detection.height * canvasHeight;
         
         // Draw the box
-        ctx.strokeRect(x, y, detection.width, detection.height);
+        ctx.strokeRect(x, y, width, height);
         
         // Draw the label
         const label = `${detection.class} ${Math.round(detection.confidence * 100)}%`;
         ctx.fillStyle = 'rgba(0, 255, 0, 0.7)';
-        ctx.fillRect(x, y - 20, ctx.measureText(label).width + 10, 20);
+        ctx.fillRect(x, y - 25, ctx.measureText(label).width + 10, 20);
         ctx.fillStyle = '#000';
-        ctx.fillText(label, x + 5, y - 5);
+        ctx.fillText(label, x + 5, y - 10);
       });
     };
 
@@ -131,6 +138,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, trashDetections = [
     
     if (isPlaying) {
       animationFrameId = requestAnimationFrame(animate);
+    } else {
+      drawDetections(); // Make sure to draw even when paused
     }
 
     return () => {
@@ -151,7 +160,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, trashDetections = [
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Video Analysis</CardTitle>
+        <CardTitle className="flex items-center justify-between">
+          <span>Video Analysis</span>
+          <div className="flex items-center text-sm font-normal bg-green-100 text-green-800 px-3 py-1 rounded-full">
+            <Trash className="h-4 w-4 mr-1" />
+            <span>Detected: {visibleTrashCount}</span>
+          </div>
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="relative aspect-video bg-black rounded-md overflow-hidden">
