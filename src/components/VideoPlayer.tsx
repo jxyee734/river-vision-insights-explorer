@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Play, Pause, Volume2, VolumeX, Trash, Layers, Eye, EyeOff } from 'lucide-react';
@@ -170,9 +169,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       
       // Draw heatmap
       if (trashLocations.current.length > 0) {
-        // Create gradient for heatmap
-        const locations = trashLocations.current;
-        
         // Create a new off-screen canvas for the heat data
         const heatCanvas = document.createElement('canvas');
         heatCanvas.width = canvas.width;
@@ -184,16 +180,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           heatCtx.globalCompositeOperation = 'lighter';
           
           // Draw each point with a radial gradient
-          locations.forEach(point => {
+          trashLocations.current.forEach(point => {
             const x = point.x * canvas.width;
             const y = point.y * canvas.height;
             const radius = Math.max(30, canvas.width / 15); // Radius based on canvas size
             
             const gradient = heatCtx.createRadialGradient(x, y, 0, x, y, radius);
-            const intensity = point.weight * 0.7; // Scale based on confidence
+            const intensity = point.weight * 0.9; // Increased intensity
             
-            gradient.addColorStop(0, `rgba(255, 0, 0, ${intensity})`); 
-            gradient.addColorStop(0.5, `rgba(255, 255, 0, ${intensity * 0.5})`);
+            // Using solid red color instead of transparent
+            gradient.addColorStop(0, '#ea384c'); // Red center
+            gradient.addColorStop(0.5, `rgba(234, 56, 76, ${intensity * 0.8})`); 
             gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
             
             heatCtx.fillStyle = gradient;
@@ -202,8 +199,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             heatCtx.fill();
           });
           
-          // Apply the heatmap to the main canvas with transparency
-          ctx.globalAlpha = 0.6;
+          // Apply the heatmap to the main canvas with less transparency
+          ctx.globalAlpha = 0.8; // Increased from 0.6 to 0.8
           ctx.drawImage(heatCanvas, 0, 0);
           ctx.globalAlpha = 1.0;
         }
@@ -321,24 +318,28 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         const width = detection.width * canvasWidth;
         const height = detection.height * canvasHeight;
         
-        // Use different colors based on confidence level
+        // Use red and green colors based on confidence level
         const confidence = detection.confidence;
-        let boxColor = 'rgba(255, 0, 0, 0.9)'; // Default red
+        let boxColor = '#ea384c'; // Default red
+        let fillColor = '#ea384c'; // Default fill color (red)
         
         if (confidence > 0.85) {
-          boxColor = 'rgba(255, 0, 0, 0.9)'; // High confidence: red
+          boxColor = '#F2FCE2'; // High confidence: soft green
+          fillColor = '#F2FCE2';
         } else if (confidence > 0.7) {
-          boxColor = 'rgba(255, 165, 0, 0.9)'; // Medium confidence: orange
+          boxColor = '#ea384c'; // Medium confidence: red
+          fillColor = '#ea384c';
         } else {
-          boxColor = 'rgba(255, 255, 0, 0.9)'; // Low confidence: yellow
+          boxColor = '#ea384c'; // Low confidence: red
+          fillColor = '#ea384c';
         }
         
         // Draw box with thicker stroke
         ctx.strokeStyle = boxColor;
         ctx.strokeRect(x, y, width, height);
         
-        // Draw semi-transparent box fill
-        ctx.fillStyle = boxColor.replace('0.9', '0.2');
+        // Draw semi-transparent box fill with solid colors
+        ctx.fillStyle = `${fillColor}40`; // 25% opacity
         ctx.fillRect(x, y, width, height);
         
         // Draw the label with contrast background
