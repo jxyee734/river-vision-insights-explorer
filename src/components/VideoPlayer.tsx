@@ -111,7 +111,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       canvas.width = video.clientWidth;
       canvas.height = video.clientHeight;
       
-      // Clear previous drawings
+      // Clear previous drawings with complete transparency
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
       if (!showBoundingBoxes) {
@@ -176,21 +176,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         const heatCtx = heatCanvas.getContext('2d');
         
         if (heatCtx) {
-          // Set blend mode
+          // Set blend mode for more intensity
           heatCtx.globalCompositeOperation = 'lighter';
           
           // Draw each point with a radial gradient
           trashLocations.current.forEach(point => {
             const x = point.x * canvas.width;
             const y = point.y * canvas.height;
-            const radius = Math.max(30, canvas.width / 15); // Radius based on canvas size
+            const radius = Math.max(40, canvas.width / 10); // Increased radius for more visibility
             
             const gradient = heatCtx.createRadialGradient(x, y, 0, x, y, radius);
-            const intensity = point.weight * 0.9; // Increased intensity
+            const intensity = Math.min(1.0, point.weight * 1.5); // Increase intensity, cap at 1.0
             
-            // Using solid red color instead of transparent
-            gradient.addColorStop(0, '#ea384c'); // Red center
-            gradient.addColorStop(0.5, `rgba(234, 56, 76, ${intensity * 0.8})`); 
+            // Using solid red color with higher opacity
+            gradient.addColorStop(0, '#ff0000'); // Bright red center
+            gradient.addColorStop(0.4, `rgba(234, 56, 76, ${intensity})`); 
             gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
             
             heatCtx.fillStyle = gradient;
@@ -199,8 +199,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             heatCtx.fill();
           });
           
-          // Apply the heatmap to the main canvas with less transparency
-          ctx.globalAlpha = 0.8; // Increased from 0.6 to 0.8
+          // Apply the heatmap to the main canvas with higher opacity
+          ctx.globalAlpha = 0.9; // Increased from 0.8 to 0.9 for more visibility
           ctx.drawImage(heatCanvas, 0, 0);
           ctx.globalAlpha = 1.0;
         }
@@ -308,7 +308,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       canvasHeight: number
     ) => {
       // Style for the bounding boxes - enhanced visibility
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 6; // Thicker lines for better visibility (increased from 4)
       ctx.font = 'bold 16px Arial';
       
       detections.forEach(detection => {
@@ -318,35 +318,35 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         const width = detection.width * canvasWidth;
         const height = detection.height * canvasHeight;
         
-        // Use red and green colors based on confidence level
+        // Use red and green colors based on confidence level with brighter colors
         const confidence = detection.confidence;
-        let boxColor = '#ea384c'; // Default red
-        let fillColor = '#ea384c'; // Default fill color (red)
+        let boxColor = '#ff0000'; // Bright red for more visibility
+        let fillColor = '#ff0000'; // Bright red for more visibility
         
-        if (confidence > 0.85) {
-          boxColor = '#F2FCE2'; // High confidence: soft green
-          fillColor = '#F2FCE2';
-        } else if (confidence > 0.7) {
-          boxColor = '#ea384c'; // Medium confidence: red
-          fillColor = '#ea384c';
+        if (confidence > 0.75) {
+          boxColor = '#00ff00'; // Bright green for high confidence
+          fillColor = '#00ff00';
+        } else if (confidence > 0.6) {
+          boxColor = '#ff9900'; // Orange for medium confidence
+          fillColor = '#ff9900';
         } else {
-          boxColor = '#ea384c'; // Low confidence: red
-          fillColor = '#ea384c';
+          boxColor = '#ff0000'; // Bright red for low confidence
+          fillColor = '#ff0000';
         }
         
         // Draw box with thicker stroke
         ctx.strokeStyle = boxColor;
         ctx.strokeRect(x, y, width, height);
         
-        // Draw semi-transparent box fill with solid colors
-        ctx.fillStyle = `${fillColor}40`; // 25% opacity
+        // Draw semi-transparent box fill with higher opacity
+        ctx.fillStyle = `${fillColor}60`; // 40% opacity (increased from 25%)
         ctx.fillRect(x, y, width, height);
         
         // Draw the label with contrast background
         const label = `${detection.class} ${Math.round(detection.confidence * 100)}%`;
         const textWidth = ctx.measureText(label).width + 10;
         
-        // Label background
+        // Label background with more visible color
         ctx.fillStyle = boxColor;
         ctx.fillRect(x, y - 25, textWidth, 20);
         
@@ -463,8 +463,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               id="show-bounding-boxes" 
               checked={showBoundingBoxes} 
               onCheckedChange={setShowBoundingBoxes}
+              defaultChecked // Ensure bounding boxes are on by default
             />
-            <Label htmlFor="show-bounding-boxes">Show Bounding Boxes</Label>
+            <Label htmlFor="show-bounding-boxes" className="font-medium">Show Bounding Boxes</Label>
           </div>
           
           <div className="flex items-center space-x-2">
@@ -472,8 +473,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               id="show-heatmap" 
               checked={showHeatmap} 
               onCheckedChange={setShowHeatmap}
+              defaultChecked // Ensure heatmap is on by default
             />
-            <Label htmlFor="show-heatmap">Show Heatmap</Label>
+            <Label htmlFor="show-heatmap" className="font-medium">Show Heatmap</Label>
           </div>
           
           <div className="flex items-center space-x-2">
@@ -481,8 +483,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               id="show-frame-info" 
               checked={showFrameInfo} 
               onCheckedChange={setShowFrameInfo}
+              defaultChecked
             />
-            <Label htmlFor="show-frame-info">Show Frame Data</Label>
+            <Label htmlFor="show-frame-info" className="font-medium">Show Frame Data</Label>
           </div>
           
           <div className="text-sm text-gray-600 w-full mt-2">
