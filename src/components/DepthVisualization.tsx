@@ -7,14 +7,12 @@ interface DepthVisualizationProps {
   depthProfile: number[];
   averageDepth: number;
   maxDepth: number;
-  depthConfidence?: number;
 }
 
 const DepthVisualization: React.FC<DepthVisualizationProps> = ({ 
   depthProfile, 
   averageDepth,
-  maxDepth,
-  depthConfidence = 0.5
+  maxDepth 
 }) => {
   const chartData = depthProfile.map((depth, index) => ({
     position: `P${index + 1}`,
@@ -29,7 +27,6 @@ const DepthVisualization: React.FC<DepthVisualizationProps> = ({
           <div className="text-sm font-normal flex flex-col items-end">
             <span className="text-xs text-muted-foreground">Average: {averageDepth} m</span>
             <span className="text-xs text-muted-foreground">Maximum: {maxDepth} m</span>
-            <span className="text-xs text-muted-foreground">Confidence: {(depthConfidence * 100).toFixed(0)}%</span>
           </div>
         </CardTitle>
       </CardHeader>
@@ -71,8 +68,8 @@ const DepthVisualization: React.FC<DepthVisualizationProps> = ({
         <div className="mt-4 p-4 rounded-md bg-blue-50 border border-blue-100">
           <h4 className="text-sm font-medium text-blue-800">How is depth calculated?</h4>
           <p className="text-xs text-blue-600 mt-1">
-            River depth is estimated using the formula: Z = f × V / Flow, where f is the focal length,
-            V is the relative velocity, and Flow is the optical flow magnitude. Accuracy: {(depthConfidence * 100).toFixed(0)}%.
+            River depth is estimated using computer vision techniques that analyze water color, 
+            turbidity, and visual references. Accuracy may vary based on water clarity and lighting conditions.
           </p>
         </div>
       </CardContent>

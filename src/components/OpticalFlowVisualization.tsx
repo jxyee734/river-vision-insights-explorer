@@ -1,6 +1,7 @@
 
-import React, { useRef, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useRef, useEffect, useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { generateFlowHeatmap } from '@/utils/tensorflowFlowAnalysis';
 
 interface OpticalFlowVisualizationProps {
   previousFrame: ImageData;
@@ -14,6 +15,7 @@ const OpticalFlowVisualization: React.FC<OpticalFlowVisualizationProps> = ({
   flowVectors
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [heatmapUrl, setHeatmapUrl] = useState<string>('');
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -31,80 +33,45 @@ const OpticalFlowVisualization: React.FC<OpticalFlowVisualizationProps> = ({
     tempCtx.putImageData(currentFrame, 0, 0);
     ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
 
-    // Draw flow vectors with improved visibility
-    ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
-    ctx.fillStyle = 'rgba(0, 255, 0, 0.8)';
-    ctx.lineWidth = 2;
-
-    const gridSize = 10;
-    const cellWidth = canvas.width / gridSize;
-    const cellHeight = canvas.height / gridSize;
-
-    flowVectors.velocities.forEach((velocity, index) => {
-      const direction = flowVectors.directions[index];
-      
-      // Calculate grid position
-      const gridX = index % gridSize;
-      const gridY = Math.floor(index / gridSize);
-      
-      const x = gridX * cellWidth + cellWidth / 2;
-      const y = gridY * cellHeight + cellHeight / 2;
-
-      // Scale vector length based on velocity
-      const length = velocity * 30; // Increased scale for better visibility
-      const endX = x + Math.cos(direction) * length;
-      const endY = y + Math.sin(direction) * length;
-
-      // Draw vector line
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(endX, endY);
-      ctx.stroke();
-
-      // Draw arrow head
-      const headLength = 12;
-      const angle = Math.atan2(endY - y, endX - x);
-      ctx.beginPath();
-      ctx.moveTo(endX, endY);
-      ctx.lineTo(
-        endX - headLength * Math.cos(angle - Math.PI / 6),
-        endY - headLength * Math.sin(angle - Math.PI / 6)
-      );
-      ctx.lineTo(
-        endX - headLength * Math.cos(angle + Math.PI / 6),
-        endY - headLength * Math.sin(angle + Math.PI / 6)
-      );
-      ctx.closePath();
-      ctx.fill();
-
-      // Add velocity label
-      ctx.font = '10px Arial';
-      ctx.fillStyle = 'white';
-      ctx.strokeStyle = 'black';
-      ctx.lineWidth = 2;
-      const velocityText = `${velocity.toFixed(1)} m/s`;
-      ctx.strokeText(velocityText, x - 15, y - 10);
-      ctx.fillText(velocityText, x - 15, y - 10);
-    });
+    // Generate and apply the flow visualization
+    const heatmap = generateFlowHeatmap(canvas, flowVectors.velocities, flowVectors.directions);
+    setHeatmapUrl(heatmap);
 
   }, [previousFrame, currentFrame, flowVectors]);
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Optical Flow Analysis</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <Card className="w-full border border-gray-200 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+      <CardContent className="p-4">
         <div className="relative aspect-video">
           <canvas 
             ref={canvasRef}
-            className="w-full h-full"
+            className="w-full h-full rounded"
             width={640}
             height={360}
           />
+          <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-xs p-2 flex justify-between">
+            <span className="text-blue-300">Flow Analysis</span>
+            <span className="text-green-300">
+              {flowVectors.velocities.length > 0 ? 
+                `Avg: ${(flowVectors.velocities.reduce((a, b) => a + b, 0) / flowVectors.velocities.length).toFixed(2)} m/s` : 
+                'No data'}
+            </span>
+          </div>
         </div>
-        <div className="mt-4 text-sm text-gray-600">
-          <p>Green arrows indicate water flow direction and velocity. Labels show speed in meters per second.</p>
+
+        <div className="grid grid-cols-2 gap-2 mt-4">
+          <div className="bg-gray-50 p-2 rounded-sm border border-gray-200 dark:bg-gray-700/50 dark:border-gray-600">
+            <div className="text-xs text-gray-500 dark:text-gray-400">Max Velocity</div>
+            <div className="text-sm font-mono">
+              {flowVectors.velocities.length > 0 ? 
+                `${Math.max(...flowVectors.velocities).toFixed(2)} m/s` : 
+                'N/A'}
+            </div>
+          </div>
+          <div className="bg-gray-50 p-2 rounded-sm border border-gray-200 dark:bg-gray-700/50 dark:border-gray-600">
+            <div className="text-xs text-gray-500 dark:text-gray-400">Vectors Count</div>
+            <div className="text-sm font-mono">{flowVectors.velocities.length}</div>
+          </div>
         </div>
       </CardContent>
     </Card>
