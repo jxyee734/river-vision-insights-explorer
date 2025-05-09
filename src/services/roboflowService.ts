@@ -19,7 +19,7 @@ interface RoboflowResponse {
 }
 
 const ROBOFLOW_API_KEY = "rJMJV2iPeGELo9CaJi9a";
-const DEFAULT_CONFIDENCE_THRESHOLD = 0.45; // Increased default threshold for better accuracy
+const DEFAULT_CONFIDENCE_THRESHOLD = 0.5; // Increased default threshold for better accuracy
 
 export const detectTrashInImage = async (
   imageData: string, 

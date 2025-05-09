@@ -17,8 +17,13 @@ export interface AnalysisResult {
       confidence: number;
       x: number; // normalized coordinates (0-1)
       y: number; // normalized coordinates (0-1)
-      width: number; // normalized width (0-1)
-      height: number; // normalized height (0-1)
+      width: number; // normalized height (0-1)
+      height: number; // normalized width (0-1)
     }>;
   }>;
+  // New depth estimation data
+  depthProfile: number[];
+  averageDepth: number;
+  maxDepth: number;
+  depthConfidence: number;
 }
