@@ -7,8 +7,8 @@ const FOCAL_LENGTH_PIXELS = 700; // Approximate focal length for typical camera
 const RELATIVE_VELOCITY = 1.5; // Estimated relative velocity between camera and river surface
 
 /**
- * Process a video file and analyze its content using real algorithms and Gemini API
- * Now combines optical flow, trash detection, and depth estimation in a single pass
+ * Process a video file and analyze its content in a single pass
+ * Combines optical flow, trash detection, and depth estimation directly on video frames
  */
 export async function analyzeVideo(file: File): Promise<AnalysisResult> {
   const video = document.createElement('video');
@@ -20,12 +20,10 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
   });
   
   const frames: ImageData[] = [];
-  const trashDetectionImages: string[] = [];
   const trashDetections: Array<{
     timestamp: number;
     detections: Array<any>;
   }> = [];
-  let trashAnalysis: GeminiResponse | null = null;
   let totalTrashCount = 0;
   let allCategories: Set<string> = new Set();
   let environmentalAnalysis = '';
@@ -41,7 +39,7 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
     if (window.updateProcessingStage) window.updateProcessingStage(0);
     
     const totalDuration = video.duration;
-    // Sample more frames for better heatmap data
+    // Sample more frames for better analysis
     const frameInterval = totalDuration > 10 ? 0.5 : 0.3; // Adjust sampling rate based on video length
     let previousFrameData: ImageData | null = null;
     
@@ -51,68 +49,61 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
       
       if (window.updateProcessingStage) window.updateProcessingStage(1);
       
-      const frameBase64 = extractVideoFrame(video);
-      
-      // Create a temporary image
-      const img = new Image();
-      img.src = frameBase64;
-      await new Promise<void>((resolve) => {
-        img.onload = () => resolve();
-      });
-      
+      // Extract frame directly for analysis without saving as image
       const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
       const ctx = canvas.getContext('2d');
       
-      if (ctx) {
-        ctx.drawImage(img, 0, 0);
-        const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        frames.push(frameData);
+      if (!ctx) continue;
+      
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Get frame data for optical flow analysis
+      const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      frames.push(frameData);
+      
+      // Process optical flow if we have a previous frame
+      if (previousFrameData) {
+        const flowResult = calculateOpticalFlow(previousFrameData, frameData);
+        flowVectors.push(flowResult);
         
-        // Process optical flow if we have a previous frame
-        if (previousFrameData) {
-          const flowResult = calculateOpticalFlow(previousFrameData, frameData);
-          flowVectors.push(flowResult);
-          
-          // Calculate depth profile from optical flow
-          const depthProfile = estimateDepth(flowResult.velocities);
-          depthProfiles.push(depthProfile);
-          
-          // Track maximum depth
-          const frameMaxDepth = Math.max(...depthProfile);
-          if (frameMaxDepth > overallMaxDepth) {
-            overallMaxDepth = frameMaxDepth;
-          }
+        // Calculate depth profile from optical flow
+        const depthProfile = estimateDepth(flowResult.velocities);
+        depthProfiles.push(depthProfile);
+        
+        // Track maximum depth
+        const frameMaxDepth = Math.max(...depthProfile);
+        if (frameMaxDepth > overallMaxDepth) {
+          overallMaxDepth = frameMaxDepth;
         }
+      }
+      
+      // Save current frame for next iteration's optical flow calculation
+      previousFrameData = frameData;
+      
+      // Process trash detection directly on the frame
+      if (window.updateProcessingStage) window.updateProcessingStage(2);
+      
+      // Convert frame to base64 for Roboflow API
+      const frameBase64 = canvas.toDataURL('image/jpeg');
+      
+      // Use higher confidence threshold for more accurate detections
+      const roboflowResult = await detectTrashInImage(frameBase64, 0.5);
+      
+      // If trash is detected, store the detections
+      if (roboflowResult && roboflowResult.predictions && roboflowResult.predictions.length > 0) {
+        // Store detections with their timestamp
+        trashDetections.push({
+          timestamp: currentTime,
+          detections: roboflowResult.predictions
+        });
         
-        // Save current frame for next iteration's optical flow calculation
-        previousFrameData = frameData;
-        
-        // Analyze frame for trash detection
-        if (window.updateProcessingStage) window.updateProcessingStage(2);
-        
-        // Use higher confidence threshold for more accurate detections
-        const roboflowResult = await detectTrashInImage(frameBase64, 0.5);
-        
-        // If trash is detected, store the detections
-        if (roboflowResult && roboflowResult.predictions && roboflowResult.predictions.length > 0) {
-          // Store detections with their timestamp
-          trashDetections.push({
-            timestamp: currentTime,
-            detections: roboflowResult.predictions
-          });
-          
-          // Add Roboflow detections
-          totalTrashCount += roboflowResult.predictions.length;
-          roboflowResult.predictions.forEach(prediction => {
-            allCategories.add(prediction.class);
-          });
-          
-          // Create annotated image with detections
-          const annotatedImage = drawDetections(canvas, roboflowResult.predictions);
-          trashDetectionImages.push(annotatedImage);
-        }
+        // Add Roboflow detections
+        totalTrashCount += roboflowResult.predictions.length;
+        roboflowResult.predictions.forEach(prediction => {
+          allCategories.add(prediction.class);
+        });
       }
     }
     
@@ -142,11 +133,11 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
       trashCategories: Array.from(allCategories),
       environmentalImpact: environmentalAnalysis || 'No significant environmental impact detected',
       frames,
-      trashDetectionImages,
+      trashDetectionImages: [], // Empty as we're not creating separate images anymore
       flowVectors,
       videoUrl,
       trashDetections,
-      // New depth data
+      // Depth data
       depthProfile: finalDepthProfile,
       averageDepth: avgDepth,
       maxDepth: overallMaxDepth,
@@ -394,40 +385,4 @@ function calculateFinalDepthProfile(depthProfiles: number[][]): number[] {
   return finalProfile.map((total, i) => {
     return countProfile[i] > 0 ? Number((total / countProfile[i]).toFixed(2)) : 0;
   });
-}
-
-/**
- * Draw bounding boxes and labels on detection results
- */
-function drawDetections(canvas: HTMLCanvasElement, predictions: any[]): string {
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return canvas.toDataURL();
-
-  // Style for the bounding boxes - enhanced for better visibility
-  ctx.strokeStyle = '#ff0000';
-  ctx.lineWidth = 4; 
-  ctx.font = 'bold 16px Arial';
-  ctx.fillStyle = '#ff0000';
-
-  predictions.forEach(prediction => {
-    const x = prediction.x - prediction.width / 2;
-    const y = prediction.y - prediction.height / 2;
-    
-    // Draw the box with thicker lines
-    ctx.strokeRect(x, y, prediction.width, prediction.height);
-    
-    // Draw semi-transparent fill
-    ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
-    ctx.fillRect(x, y, prediction.width, prediction.height);
-    
-    // Draw the label with better contrast
-    const label = `${prediction.class} ${Math.round(prediction.confidence * 100)}%`;
-    ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
-    ctx.fillRect(x, y - 25, ctx.measureText(label).width + 10, 22);
-    
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(label, x + 5, y - 10);
-  });
-
-  return canvas.toDataURL();
 }

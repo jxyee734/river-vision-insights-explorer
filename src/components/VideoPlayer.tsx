@@ -42,6 +42,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showBoundingBoxes, setShowBoundingBoxes] = useState(true);
   const [showFrameInfo, setShowFrameInfo] = useState(true);
+  const [trashCounter, setTrashCounter] = useState<{[key: string]: number}>({});
   
   // Store trash locations for heatmap
   const trashLocations = useRef<Array<{x: number, y: number, weight: number}>>([]);
@@ -116,6 +117,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       
       if (!showBoundingBoxes) {
         setVisibleTrashCount(0);
+        setTrashCounter({});
         return;
       }
       
@@ -128,17 +130,25 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         // Update trash count
         setVisibleTrashCount(currentDetections.detections.length);
         
+        // Update trash counter by category
+        const counter: {[key: string]: number} = {};
+        currentDetections.detections.forEach(det => {
+          counter[det.class] = (counter[det.class] || 0) + 1;
+        });
+        setTrashCounter(counter);
+        
         // Update frame info
         if (showFrameInfo && frameInfoRef.current) {
           updateFrameInfo(currentTime, currentDetections.detections, 
-                        findNearestFlowVector(currentTime));
+                        findNearestFlowVector(currentTime), counter);
         }
       } else {
         setVisibleTrashCount(0);
+        setTrashCounter({});
         
         // Update frame info with just flow data
         if (showFrameInfo && frameInfoRef.current) {
-          updateFrameInfo(currentTime, [], findNearestFlowVector(currentTime));
+          updateFrameInfo(currentTime, [], findNearestFlowVector(currentTime), {});
         }
       }
     };
@@ -226,7 +236,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const updateFrameInfo = (
       time: number, 
       detections: any[], 
-      flowVector: {velocities: number[], directions: number[]} | null
+      flowVector: {velocities: number[], directions: number[]} | null,
+      trashCounts: {[key: string]: number}
     ) => {
       if (!frameInfoRef.current) return;
       
@@ -258,14 +269,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       const frameNumber = Math.floor(time * 30); // Assuming 30fps
       
       // Create trash detection list
-      const trashList = detections.length > 0 
-        ? detections.reduce((acc: {[key: string]: number}, det) => {
-            acc[det.class] = (acc[det.class] || 0) + 1;
-            return acc;
-          }, {})
-        : {};
-      
-      const trashListHTML = Object.entries(trashList).map(([type, count]) => 
+      const trashListHTML = Object.entries(trashCounts).map(([type, count]) => 
         `<div class="flex justify-between">
           <span>${type}</span>
           <span class="font-medium">×${count}</span>
@@ -390,9 +394,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>Video Analysis</span>
-          <div className="flex items-center text-sm font-normal bg-green-100 text-green-800 px-3 py-1 rounded-full">
-            <Trash className="h-4 w-4 mr-1" />
-            <span>Detected: {visibleTrashCount}</span>
+          <div className="flex items-center gap-2">
+            {Object.entries(trashCounter).map(([type, count]) => (
+              <div key={type} className="flex items-center text-sm font-normal bg-green-100 text-green-800 px-3 py-1 rounded-full">
+                <Trash className="h-4 w-4 mr-1" />
+                <span>{type}: {count}</span>
+              </div>
+            ))}
+            {visibleTrashCount === 0 && (
+              <div className="flex items-center text-sm font-normal bg-gray-100 text-gray-800 px-3 py-1 rounded-full">
+                <Trash className="h-4 w-4 mr-1" />
+                <span>No trash detected</span>
+              </div>
+            )}
           </div>
         </CardTitle>
       </CardHeader>
@@ -471,8 +485,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           </div>
           
           <div className="text-sm text-gray-600 w-full mt-2">
-            <p>Video showing water flow patterns and detected trash items with enhanced visualizations. 
-               Frame data includes flow metrics and depth estimates.</p>
+            <p>Video showing water flow patterns and detected trash items with real-time analysis. 
+               Frame data includes flow metrics, depth estimates and trash counts.</p>
           </div>
         </div>
       </CardContent>

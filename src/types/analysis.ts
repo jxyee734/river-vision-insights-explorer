@@ -7,7 +7,7 @@ export interface AnalysisResult {
   trashCategories: string[];
   environmentalImpact: string;
   frames: ImageData[];
-  trashDetectionImages: string[]; // We'll keep this for backward compatibility
+  trashDetectionImages: string[]; // Keep for backward compatibility but no longer used
   flowVectors: Array<{velocities: number[], directions: number[]}>;
   videoUrl?: string; // URL to the processed video
   trashDetections?: Array<{
@@ -21,7 +21,7 @@ export interface AnalysisResult {
       height: number; // normalized width (0-1)
     }>;
   }>;
-  // New depth estimation data
+  // Depth estimation data
   depthProfile: number[];
   averageDepth: number;
   maxDepth: number;
