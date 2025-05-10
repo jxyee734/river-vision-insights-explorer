@@ -7,5 +7,23 @@ export interface AnalysisResult {
   trashCategories: string[];
   environmentalImpact: string;
   frames: ImageData[];
-  trashDetectionImages: string[]; // Base64 encoded images where trash was detected
+  trashDetectionImages: string[]; // Keep for backward compatibility but no longer used
+  flowVectors: Array<{velocities: number[], directions: number[]}>;
+  videoUrl?: string; // URL to the processed video
+  trashDetections?: Array<{
+    timestamp: number;
+    detections: Array<{
+      class: string;
+      confidence: number;
+      x: number; // normalized coordinates (0-1)
+      y: number; // normalized coordinates (0-1)
+      width: number; // normalized height (0-1)
+      height: number; // normalized width (0-1)
+    }>;
+  }>;
+  // Depth estimation data
+  depthProfile: number[];
+  averageDepth: number;
+  maxDepth: number;
+  depthConfidence: number;
 }
