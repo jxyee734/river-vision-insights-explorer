@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Play, Pause, Volume2, VolumeX, Trash, Layers, Eye, EyeOff } from 'lucide-react';
@@ -85,11 +84,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       
       trashDetections.forEach(detection => {
         detection.detections.forEach(item => {
-          // Increase weight for better visibility
           locations.push({
             x: item.x,
             y: item.y,
-            weight: Math.min(item.confidence * 2.5, 1.0) // Amplify the weight for better visibility
+            weight: item.confidence // Use confidence as weight
           });
         });
       });
@@ -113,7 +111,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       canvas.width = video.clientWidth;
       canvas.height = video.clientHeight;
       
-      // Clear previous drawings with complete transparency
+      // Clear previous drawings
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
       if (!showBoundingBoxes) {
@@ -169,7 +167,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       // Clear previous drawings
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
-      // Draw heatmap with much higher intensity
+      // Draw heatmap
       if (trashLocations.current.length > 0) {
         // Create a new off-screen canvas for the heat data
         const heatCanvas = document.createElement('canvas');
@@ -178,29 +176,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         const heatCtx = heatCanvas.getContext('2d');
         
         if (heatCtx) {
-          // Set blend mode for maximum intensity
-          heatCtx.globalCompositeOperation = 'source-over';
-          
-          // Draw an initial transparent overlay to improve contrast
-          heatCtx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-          heatCtx.fillRect(0, 0, canvas.width, canvas.height);
-          
-          // Set blending mode for additive color
+          // Set blend mode
           heatCtx.globalCompositeOperation = 'lighter';
           
-          // Draw each point with a much larger and more intense radial gradient
+          // Draw each point with a radial gradient
           trashLocations.current.forEach(point => {
             const x = point.x * canvas.width;
             const y = point.y * canvas.height;
-            const radius = Math.max(80, canvas.width / 6); // Much larger radius
+            const radius = Math.max(30, canvas.width / 15); // Radius based on canvas size
             
             const gradient = heatCtx.createRadialGradient(x, y, 0, x, y, radius);
-            const intensity = Math.min(1.0, point.weight * 3.0); // Triple the intensity
+            const intensity = point.weight * 0.9; // Increased intensity
             
-            // Using pure red with higher opacity
-            gradient.addColorStop(0, '#ff0000'); // Solid red center
-            gradient.addColorStop(0.3, `rgba(255, 0, 0, ${intensity})`);
-            gradient.addColorStop(0.6, `rgba(255, 0, 0, ${intensity * 0.7})`);
+            // Using solid red color instead of transparent
+            gradient.addColorStop(0, '#ea384c'); // Red center
+            gradient.addColorStop(0.5, `rgba(234, 56, 76, ${intensity * 0.8})`); 
             gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
             
             heatCtx.fillStyle = gradient;
@@ -209,9 +199,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             heatCtx.fill();
           });
           
-          // Apply the heatmap to the main canvas with full opacity
-          ctx.globalAlpha = 1.0;
+          // Apply the heatmap to the main canvas with less transparency
+          ctx.globalAlpha = 0.8; // Increased from 0.6 to 0.8
           ctx.drawImage(heatCanvas, 0, 0);
+          ctx.globalAlpha = 1.0;
         }
       }
     };
@@ -316,9 +307,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       canvasWidth: number, 
       canvasHeight: number
     ) => {
-      // Extreme visibility settings for bounding boxes
-      ctx.lineWidth = 10; // Very thick lines
-      ctx.font = 'bold 20px Arial'; // Larger font
+      // Style for the bounding boxes - enhanced visibility
+      ctx.lineWidth = 4;
+      ctx.font = 'bold 16px Arial';
       
       detections.forEach(detection => {
         // Convert normalized coordinates to canvas coordinates
@@ -327,36 +318,41 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         const width = detection.width * canvasWidth;
         const height = detection.height * canvasHeight;
         
-        // Use pure red and green colors for maximum contrast
+        // Use red and green colors based on confidence level
         const confidence = detection.confidence;
-        let boxColor = '#FF0000'; // Pure red for low confidence
-        let fillColor = '#FF0000'; // Pure red fill
+        let boxColor = '#ea384c'; // Default red
+        let fillColor = '#ea384c'; // Default fill color (red)
         
-        if (confidence > 0.65) {
-          boxColor = '#00FF00'; // Pure green for high confidence
-          fillColor = '#00FF00';
+        if (confidence > 0.85) {
+          boxColor = '#F2FCE2'; // High confidence: soft green
+          fillColor = '#F2FCE2';
+        } else if (confidence > 0.7) {
+          boxColor = '#ea384c'; // Medium confidence: red
+          fillColor = '#ea384c';
+        } else {
+          boxColor = '#ea384c'; // Low confidence: red
+          fillColor = '#ea384c';
         }
         
-        // Draw box with very thick stroke
+        // Draw box with thicker stroke
         ctx.strokeStyle = boxColor;
-        ctx.lineJoin = 'round'; // Round corners for better visibility
         ctx.strokeRect(x, y, width, height);
         
-        // Draw higher opacity box fill
-        ctx.fillStyle = `${fillColor}80`; // 50% opacity
+        // Draw semi-transparent box fill with solid colors
+        ctx.fillStyle = `${fillColor}40`; // 25% opacity
         ctx.fillRect(x, y, width, height);
         
-        // Draw the label with better contrast
+        // Draw the label with contrast background
         const label = `${detection.class} ${Math.round(detection.confidence * 100)}%`;
-        const textWidth = ctx.measureText(label).width + 20;
+        const textWidth = ctx.measureText(label).width + 10;
         
         // Label background
         ctx.fillStyle = boxColor;
-        ctx.fillRect(x, y - 30, textWidth, 25);
+        ctx.fillRect(x, y - 25, textWidth, 20);
         
         // Label text
-        ctx.fillStyle = '#FFFFFF'; // White text
-        ctx.fillText(label, x + 10, y - 12);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(label, x + 5, y - 10);
       });
     };
 
@@ -425,20 +421,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           />
           <canvas
             ref={overlayCanvasRef}
-            className="absolute top-0 left-0 w-full h-full pointer-events-none z-10"
+            className="absolute top-0 left-0 w-full h-full pointer-events-none"
           />
           <canvas
             ref={heatmapCanvasRef}
-            className="absolute top-0 left-0 w-full h-full pointer-events-none z-20"
+            className="absolute top-0 left-0 w-full h-full pointer-events-none"
           />
           
           {/* Frame information overlay */}
           <div 
             ref={frameInfoRef}
-            className="absolute top-4 left-4 transition-opacity z-30 shadow-lg"
+            className={`absolute top-4 left-4 transition-opacity ${showFrameInfo ? 'opacity-100' : 'opacity-0'}`}
           />
           
-          <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent z-40">
+          <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
             <div className="flex items-center justify-between">
               <Button 
                 size="sm" 
@@ -467,9 +463,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               id="show-bounding-boxes" 
               checked={showBoundingBoxes} 
               onCheckedChange={setShowBoundingBoxes}
-              defaultChecked
             />
-            <Label htmlFor="show-bounding-boxes" className="font-medium">Show Bounding Boxes</Label>
+            <Label htmlFor="show-bounding-boxes">Show Bounding Boxes</Label>
           </div>
           
           <div className="flex items-center space-x-2">
@@ -477,9 +472,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               id="show-heatmap" 
               checked={showHeatmap} 
               onCheckedChange={setShowHeatmap}
-              defaultChecked
             />
-            <Label htmlFor="show-heatmap" className="font-medium">Show Heatmap</Label>
+            <Label htmlFor="show-heatmap">Show Heatmap</Label>
           </div>
           
           <div className="flex items-center space-x-2">
@@ -487,18 +481,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               id="show-frame-info" 
               checked={showFrameInfo} 
               onCheckedChange={setShowFrameInfo}
-              defaultChecked
             />
-            <Label htmlFor="show-frame-info" className="font-medium">Show Frame Data</Label>
+            <Label htmlFor="show-frame-info">Show Frame Data</Label>
           </div>
           
-          <div className="text-sm text-muted-foreground w-full mt-2">
-            <p className="font-medium text-black">Visual Guide:</p>
-            <div className="flex gap-4 mt-1">
-              <span className="flex items-center"><span className="w-4 h-4 inline-block bg-green-500 mr-1"></span> High confidence detection</span>
-              <span className="flex items-center"><span className="w-4 h-4 inline-block bg-red-500 mr-1"></span> Low confidence detection</span>
-              <span className="flex items-center"><span className="w-4 h-4 inline-block bg-red-500 opacity-50 mr-1"></span> Trash heatmap</span>
-            </div>
+          <div className="text-sm text-gray-600 w-full mt-2">
+            <p>Video showing water flow patterns and detected trash items with real-time analysis. 
+               Frame data includes flow metrics, depth estimates and trash counts.</p>
           </div>
         </div>
       </CardContent>
