@@ -1,14 +1,11 @@
+
 import { analyzeImage, extractVideoFrame, delay, GeminiResponse } from '../services/geminiService';
 import { detectTrashInImage } from '../services/roboflowService';
 import type { AnalysisResult } from '../types/analysis';
 
-// Constants for depth estimation
-const FOCAL_LENGTH_PIXELS = 700; // Approximate focal length for typical camera
-const RELATIVE_VELOCITY = 1.5; // Estimated relative velocity between camera and river surface
-
 /**
- * Process a video file and analyze its content in a single pass
- * Combines optical flow, trash detection, and depth estimation directly on video frames
+ * Process a video file and analyze its content using real algorithms and Gemini API
+ * Now combines optical flow and trash detection in a single pass
  */
 export async function analyzeVideo(file: File): Promise<AnalysisResult> {
   const video = document.createElement('video');
@@ -20,18 +17,16 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
   });
   
   const frames: ImageData[] = [];
+  const trashDetectionImages: string[] = [];
   const trashDetections: Array<{
     timestamp: number;
     detections: Array<any>;
   }> = [];
+  let trashAnalysis: GeminiResponse | null = null;
   let totalTrashCount = 0;
   let allCategories: Set<string> = new Set();
   let environmentalAnalysis = '';
   const flowVectors: Array<{velocities: number[], directions: number[]}> = [];
-  
-  // For depth estimation
-  const depthProfiles: number[][] = [];
-  let overallMaxDepth = 0;
   
   try {
     await video.play();
@@ -39,7 +34,7 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
     if (window.updateProcessingStage) window.updateProcessingStage(0);
     
     const totalDuration = video.duration;
-    // Sample more frames for better analysis
+    // Sample more frames for better heatmap data
     const frameInterval = totalDuration > 10 ? 0.5 : 0.3; // Adjust sampling rate based on video length
     let previousFrameData: ImageData | null = null;
     
@@ -49,61 +44,54 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
       
       if (window.updateProcessingStage) window.updateProcessingStage(1);
       
-      // Extract frame directly for analysis without saving as image
+      const frameBase64 = extractVideoFrame(video);
+      
+      // Create a temporary image
+      const img = new Image();
+      img.src = frameBase64;
+      await new Promise<void>((resolve) => {
+        img.onload = () => resolve();
+      });
+      
       const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
       const ctx = canvas.getContext('2d');
       
-      if (!ctx) continue;
-      
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      // Get frame data for optical flow analysis
-      const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      frames.push(frameData);
-      
-      // Process optical flow if we have a previous frame
-      if (previousFrameData) {
-        const flowResult = calculateOpticalFlow(previousFrameData, frameData);
-        flowVectors.push(flowResult);
+      if (ctx) {
+        ctx.drawImage(img, 0, 0);
+        const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        frames.push(frameData);
         
-        // Calculate depth profile from optical flow
-        const depthProfile = estimateDepth(flowResult.velocities);
-        depthProfiles.push(depthProfile);
-        
-        // Track maximum depth
-        const frameMaxDepth = Math.max(...depthProfile);
-        if (frameMaxDepth > overallMaxDepth) {
-          overallMaxDepth = frameMaxDepth;
+        // Process optical flow if we have a previous frame
+        if (previousFrameData) {
+          const flowResult = calculateOpticalFlow(previousFrameData, frameData);
+          flowVectors.push(flowResult);
         }
-      }
-      
-      // Save current frame for next iteration's optical flow calculation
-      previousFrameData = frameData;
-      
-      // Process trash detection directly on the frame
-      if (window.updateProcessingStage) window.updateProcessingStage(2);
-      
-      // Convert frame to base64 for Roboflow API
-      const frameBase64 = canvas.toDataURL('image/jpeg');
-      
-      // Use higher confidence threshold for more accurate detections
-      const roboflowResult = await detectTrashInImage(frameBase64, 0.5);
-      
-      // If trash is detected, store the detections
-      if (roboflowResult && roboflowResult.predictions && roboflowResult.predictions.length > 0) {
-        // Store detections with their timestamp
-        trashDetections.push({
-          timestamp: currentTime,
-          detections: roboflowResult.predictions
-        });
         
-        // Add Roboflow detections
-        totalTrashCount += roboflowResult.predictions.length;
-        roboflowResult.predictions.forEach(prediction => {
-          allCategories.add(prediction.class);
-        });
+        // Save current frame for next iteration's optical flow calculation
+        previousFrameData = frameData;
+        
+        // Analyze frame for trash detection
+        if (window.updateProcessingStage) window.updateProcessingStage(2);
+        
+        // Use higher confidence threshold for more accurate detections
+        const roboflowResult = await detectTrashInImage(frameBase64, 0.45);
+        
+        // If trash is detected, draw bounding boxes and store the annotated image
+        if (roboflowResult && roboflowResult.predictions && roboflowResult.predictions.length > 0) {
+          // Store detections with their timestamp
+          trashDetections.push({
+            timestamp: currentTime,
+            detections: roboflowResult.predictions
+          });
+          
+          // Add Roboflow detections
+          totalTrashCount += roboflowResult.predictions.length;
+          roboflowResult.predictions.forEach(prediction => {
+            allCategories.add(prediction.class);
+          });
+        }
       }
     }
     
@@ -111,13 +99,6 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
     
     // Calculate average flow metrics across all frame pairs
     const flowMetrics = calculateAverageFlowMetrics(flowVectors);
-    
-    // Calculate average depth and confidence
-    const avgDepth = calculateAverageDepth(depthProfiles);
-    const depthConfidence = calculateDepthConfidence(depthProfiles);
-    
-    // Get the final depth profile (average across all frames)
-    const finalDepthProfile = calculateFinalDepthProfile(depthProfiles);
     
     if (window.updateProcessingStage) window.updateProcessingStage(4);
     
@@ -133,15 +114,10 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
       trashCategories: Array.from(allCategories),
       environmentalImpact: environmentalAnalysis || 'No significant environmental impact detected',
       frames,
-      trashDetectionImages: [], // Empty as we're not creating separate images anymore
+      trashDetectionImages,
       flowVectors,
       videoUrl,
-      trashDetections,
-      // Depth data
-      depthProfile: finalDepthProfile,
-      averageDepth: avgDepth,
-      maxDepth: overallMaxDepth,
-      depthConfidence
+      trashDetections
     };
   } catch (error) {
     console.error("Error analyzing video:", error);
@@ -291,98 +267,36 @@ function calculateAverageFlowMetrics(flowVectors: Array<{velocities: number[], d
   };
 }
 
-/**
- * Estimate depth profile from flow velocities using the formula:
- * Z(x,y) = f * V_rel / Flow(x,y)
- */
-function estimateDepth(velocities: number[]): number[] {
-  // Implementation of the depth estimation formula
-  return velocities.map(velocity => {
-    if (velocity < 0.01) return 0; // Avoid division by near-zero
-    
-    // Apply the depth formula: Z = f * V_rel / Flow
-    const depth = FOCAL_LENGTH_PIXELS * RELATIVE_VELOCITY / (velocity * 10);
-    
-    // Bound the results to reasonable values (0-10 meters)
-    return Math.min(Math.max(depth, 0), 10);
-  });
-}
+// Add helper function to draw bounding boxes and labels
+function drawDetections(canvas: HTMLCanvasElement, predictions: any[]): string {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas.toDataURL();
 
-/**
- * Calculate average depth from all depth profiles
- */
-function calculateAverageDepth(depthProfiles: number[][]): number {
-  if (depthProfiles.length === 0) return 0;
-  
-  let totalDepth = 0;
-  let totalPoints = 0;
-  
-  depthProfiles.forEach(profile => {
-    profile.forEach(depth => {
-      if (depth > 0) {
-        totalDepth += depth;
-        totalPoints++;
-      }
-    });
-  });
-  
-  return totalPoints > 0 ? Number((totalDepth / totalPoints).toFixed(2)) : 0;
-}
+  // Style for the bounding boxes - enhanced for better visibility
+  ctx.strokeStyle = '#ff0000';
+  ctx.lineWidth = 4; 
+  ctx.font = 'bold 16px Arial';
+  ctx.fillStyle = '#ff0000';
 
-/**
- * Calculate a confidence score for depth estimates
- */
-function calculateDepthConfidence(depthProfiles: number[][]): number {
-  if (depthProfiles.length < 2) return 0.5; // Low confidence with few samples
-  
-  // Calculate consistency of depth measurements
-  const depthVariances = [];
-  
-  for (let i = 0; i < depthProfiles[0].length; i++) {
-    const depthsAtPoint = depthProfiles.map(profile => profile[i]).filter(d => d > 0);
+  predictions.forEach(prediction => {
+    const x = prediction.x - prediction.width / 2;
+    const y = prediction.y - prediction.height / 2;
     
-    if (depthsAtPoint.length > 1) {
-      // Calculate variance at this point
-      const mean = depthsAtPoint.reduce((sum, d) => sum + d, 0) / depthsAtPoint.length;
-      const variance = depthsAtPoint.reduce((sum, d) => sum + Math.pow(d - mean, 2), 0) / depthsAtPoint.length;
-      depthVariances.push(variance);
-    }
-  }
-  
-  // Calculate average variance
-  const avgVariance = depthVariances.length > 0 
-    ? depthVariances.reduce((sum, v) => sum + v, 0) / depthVariances.length 
-    : 1;
-  
-  // Convert to confidence (inverse relationship with variance)
-  const confidence = Math.max(0, Math.min(1, 1 - (avgVariance / 5)));
-  
-  return Number(confidence.toFixed(2));
-}
+    // Draw the box with thicker lines
+    ctx.strokeRect(x, y, prediction.width, prediction.height);
+    
+    // Draw semi-transparent fill
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+    ctx.fillRect(x, y, prediction.width, prediction.height);
+    
+    // Draw the label with better contrast
+    const label = `${prediction.class} ${Math.round(prediction.confidence * 100)}%`;
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+    ctx.fillRect(x, y - 25, ctx.measureText(label).width + 10, 22);
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(label, x + 5, y - 10);
+  });
 
-/**
- * Calculate final depth profile by averaging across all frames
- */
-function calculateFinalDepthProfile(depthProfiles: number[][]): number[] {
-  if (depthProfiles.length === 0) {
-    return Array(10).fill(0); // Default empty profile
-  }
-  
-  const profileLength = depthProfiles[0].length;
-  const finalProfile = new Array(profileLength).fill(0);
-  const countProfile = new Array(profileLength).fill(0);
-  
-  depthProfiles.forEach(profile => {
-    profile.forEach((depth, i) => {
-      if (depth > 0) {
-        finalProfile[i] += depth;
-        countProfile[i]++;
-      }
-    });
-  });
-  
-  // Calculate average for each position
-  return finalProfile.map((total, i) => {
-    return countProfile[i] > 0 ? Number((total / countProfile[i]).toFixed(2)) : 0;
-  });
+  return canvas.toDataURL();
 }

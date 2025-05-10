@@ -7,10 +7,9 @@ import FlowAnalysis from '@/components/FlowAnalysis';
 import TrashDetection from '@/components/TrashDetection';
 import ProcessingVisualization from '@/components/ProcessingVisualization';
 import VideoPlayer from '@/components/VideoPlayer';
-import DepthVisualization from '@/components/DepthVisualization';
 import { analyzeVideo } from '@/utils/videoAnalysis';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CloudLightning, FileVideo, Layers, Trash } from "lucide-react";
+import { CloudLightning, FileVideo } from "lucide-react";
 import { AnalysisResult } from '@/types/analysis';
 
 declare global {
@@ -75,7 +74,7 @@ const Index = () => {
             <CloudLightning className="h-8 w-8 text-blue-600" />
             <div>
               <h1 className="text-2xl font-bold text-gray-900">River Analysis</h1>
-              <p className="text-sm text-gray-500">Optical Flow, Depth & Trash Detection</p>
+              <p className="text-sm text-gray-500">Optical Flow & Trash Detection</p>
             </div>
           </div>
         </div>
@@ -111,10 +110,6 @@ const Index = () => {
                     <span className="font-medium">{analysisResult.averageVelocity} m/s</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-500">River Depth:</span>
-                    <span className="font-medium">{analysisResult.averageDepth} m</span>
-                  </div>
-                  <div className="flex items-center justify-between">
                     <span className="text-gray-500">Trash Items:</span>
                     <span className="font-medium">{analysisResult.trashCount}</span>
                   </div>
@@ -132,8 +127,8 @@ const Index = () => {
                 <div className="text-center max-w-md">
                   <h2 className="text-xl font-medium text-gray-700 mb-2">Analyze River Videos</h2>
                   <p className="text-gray-500">
-                    Upload a river video to analyze water flow, depth, and detect trash.
-                    Our AI-powered analysis provides detailed environmental insights.
+                    Upload a river video to analyze water flow and detect trash.
+                    Our AI-powered analysis provides insights on flow patterns and pollution detection.
                   </p>
                 </div>
               </div>
@@ -143,7 +138,6 @@ const Index = () => {
                   <TabsList className="w-full border-b">
                     <TabsTrigger value="video">Video Analysis</TabsTrigger>
                     <TabsTrigger value="flow">Flow Data</TabsTrigger>
-                    <TabsTrigger value="depth">Depth Profile</TabsTrigger>
                     <TabsTrigger value="trash">Trash Detection</TabsTrigger>
                   </TabsList>
                   
@@ -153,9 +147,6 @@ const Index = () => {
                         <VideoPlayer 
                           videoUrl={analysisResult.videoUrl} 
                           trashDetections={analysisResult.trashDetections}
-                          flowVectors={analysisResult.flowVectors}
-                          depthProfile={analysisResult.depthProfile}
-                          averageDepth={analysisResult.averageDepth}
                         />
                       )}
                     </TabsContent>
@@ -165,15 +156,6 @@ const Index = () => {
                         averageVelocity={analysisResult.averageVelocity}
                         flowMagnitude={analysisResult.flowMagnitude}
                         flowVectors={analysisResult.flowVectors}
-                      />
-                    </TabsContent>
-                    
-                    <TabsContent value="depth">
-                      <DepthVisualization 
-                        depthProfile={analysisResult.depthProfile}
-                        averageDepth={analysisResult.averageDepth}
-                        maxDepth={analysisResult.maxDepth}
-                        depthConfidence={analysisResult.depthConfidence}
                       />
                     </TabsContent>
                     
