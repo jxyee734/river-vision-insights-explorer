@@ -1,10 +1,9 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Play, Pause, Volume2, VolumeX, Images } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
-import { cn } from '@/lib/utils';
 
 interface VideoPlayerProps {
   videoUrl: string;
@@ -28,7 +27,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, trashDetections = [
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [visibleTrashCount, setVisibleTrashCount] = useState(0);
-  const [showGallery, setShowGallery] = useState(false);
   
   useEffect(() => {
     if (videoRef.current) {
@@ -91,26 +89,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, trashDetections = [
     setIsMuted(!isMuted);
   };
 
-  const toggleGallery = () => {
-    setShowGallery(!showGallery);
-  };
-
   return (
     <Card className="w-full">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex justify-between items-center">
+        <CardTitle className="text-lg">
           <span>Video Analysis</span>
-          {trashDetectionImages && trashDetectionImages.length > 0 && (
-            <Button 
-              size="sm" 
-              variant="outline" 
-              className="flex items-center gap-1"
-              onClick={toggleGallery}
-            >
-              <Images className="h-4 w-4" />
-              <span>{showGallery ? 'Hide Images' : 'View Images'}</span>
-            </Button>
-          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -154,8 +137,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, trashDetections = [
           </div>
         )}
         
-        {/* Gallery Section */}
-        {showGallery && trashDetectionImages && trashDetectionImages.length > 0 && (
+        {/* Always show Gallery Section if images are available */}
+        {trashDetectionImages && trashDetectionImages.length > 0 && (
           <div className="mt-6">
             <h3 className="text-md font-medium mb-3">Analysis Images Gallery</h3>
             
