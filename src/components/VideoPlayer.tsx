@@ -137,10 +137,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, trashDetections = [
           </div>
         )}
         
-        {/* Always show Gallery Section if images are available */}
+        {/* Analyzed Frames Gallery */}
         {trashDetectionImages && trashDetectionImages.length > 0 && (
           <div className="mt-6">
-            <h3 className="text-md font-medium mb-3">Analysis Images Gallery</h3>
+            <h3 className="text-md font-medium mb-3">Analyzed Video Frames</h3>
             
             <Carousel className="w-full">
               <CarouselContent>
