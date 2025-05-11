@@ -167,6 +167,7 @@ const Index = () => {
                   <VideoPlayer 
                     videoUrl={analysisResult.videoUrl} 
                     trashDetections={analysisResult.trashDetections}
+                    trashDetectionImages={analysisResult.trashDetectionImages}
                   />
                 )}
                 
@@ -243,13 +244,13 @@ const Index = () => {
                   </CardContent>
                 </Card>
                 
-                {/* Trash Detection Section */}
-                {analysisResult.trashDetections && analysisResult.trashDetections.length > 0 && (
+                {/* Trash Detection Summary */}
+                {analysisResult.trashCount > 0 && (
                   <Card className="w-full">
                     <CardContent className="pt-6">
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">Trash Classification</h3>
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">Trash Classification Summary</h3>
                       
-                      <div className="grid grid-cols-2 gap-4 mb-6">
+                      <div className="grid grid-cols-2 gap-4">
                         <div className="flex flex-col items-center justify-center p-4 bg-red-50 border border-red-100 rounded-lg">
                           <span className="text-3xl font-bold text-red-600">{analysisResult.trashCount}</span>
                           <span className="text-sm text-red-600">Total Trash Items</span>
@@ -265,22 +266,6 @@ const Index = () => {
                           ))}
                         </div>
                       </div>
-                      
-                      {analysisResult.trashDetectionImages && analysisResult.trashDetectionImages.length > 0 && (
-                        <div className="mt-4">
-                          <h4 className="text-sm font-medium text-gray-700 mb-2">Sample Detection</h4>
-                          <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
-                            <img 
-                              src={analysisResult.trashDetectionImages[0]} 
-                              alt="Trash detection example" 
-                              className="w-full h-full object-contain"
-                            />
-                          </div>
-                          <p className="text-xs text-gray-500 mt-2 text-center">
-                            Single frame showing detected trash items
-                          </p>
-                        </div>
-                      )}
                     </CardContent>
                   </Card>
                 )}
