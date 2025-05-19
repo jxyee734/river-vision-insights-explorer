@@ -1,128 +1,160 @@
-
-import { analyzeImage, extractVideoFrame, delay, GeminiResponse } from '../services/geminiService';
+import { extractVideoFrame, delay } from '../services/geminiService';
 import { detectTrashInImage } from '../services/roboflowService';
 import type { AnalysisResult } from '../types/analysis';
 
 /**
- * Process a video file and analyze its content using real algorithms and Gemini API
- * Now combines optical flow and trash detection in a single pass
+ * Process a video file and analyze its content using Roboflow for trash detection
  */
 export async function analyzeVideo(file: File): Promise<AnalysisResult> {
+  console.log('Starting video analysis...');
   const video = document.createElement('video');
   video.src = URL.createObjectURL(file);
   video.muted = true;
-  
+
   await new Promise<void>((resolve) => {
     video.onloadedmetadata = () => resolve();
   });
-  
+
+  console.log('Video loaded. Duration:', video.duration, 'seconds');
   const frames: ImageData[] = [];
   const trashDetectionImages: string[] = [];
-  const trashDetections: Array<{
-    timestamp: number;
-    detections: Array<any>;
-  }> = [];
-  let trashAnalysis: GeminiResponse | null = null;
+  const trashDetections: Array<{ timestamp: number; detections: Array<any> }> = [];
   let totalTrashCount = 0;
+  let maxTrashCountPerFrame = 0; // Initialize variable to track max count per frame
   let allCategories: Set<string> = new Set();
-  let environmentalAnalysis = '';
-  const flowVectors: Array<{velocities: number[], directions: number[]}> = [];
-  
+  const flowVectors: Array<{ velocities: number[]; directions: number[] }> = [];
+  const depthProfile: number[] = [];
+
   try {
     await video.play();
-    
+
     if (window.updateProcessingStage) window.updateProcessingStage(0);
-    
+
     const totalDuration = video.duration;
-    // Sample more frames for better heatmap data
-    const frameInterval = totalDuration > 10 ? 0.5 : 0.3; // Adjust sampling rate based on video length
+    const frameInterval = totalDuration > 10 ? 0.2 : 0.1; // Finer sampling for better timestamp coverage
     let previousFrameData: ImageData | null = null;
-    
+
     for (let currentTime = 0; currentTime < totalDuration; currentTime += frameInterval) {
+      console.log(`Processing frame at timestamp: ${currentTime.toFixed(2)}s`);
       video.currentTime = currentTime;
       await delay(100);
-      
+
       if (window.updateProcessingStage) window.updateProcessingStage(1);
-      
+
       const frameBase64 = extractVideoFrame(video);
-      
-      // Create a temporary image
+      console.log('Frame extracted:', frameBase64.substring(0, 50) + '...');
+
       const img = new Image();
       img.src = frameBase64;
       await new Promise<void>((resolve) => {
         img.onload = () => resolve();
       });
-      
+
       const canvas = document.createElement('canvas');
       canvas.width = img.width;
       canvas.height = img.height;
       const ctx = canvas.getContext('2d');
-      
+
       if (ctx) {
         ctx.drawImage(img, 0, 0);
         const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         frames.push(frameData);
-        
-        // Process optical flow if we have a previous frame
+
         if (previousFrameData) {
           const flowResult = calculateOpticalFlow(previousFrameData, frameData);
           flowVectors.push(flowResult);
         }
-        
-        // Save current frame for next iteration's optical flow calculation
         previousFrameData = frameData;
-        
-        // Analyze frame for trash detection
+
         if (window.updateProcessingStage) window.updateProcessingStage(2);
-        
-        // Use higher confidence threshold for more accurate detections
-        const roboflowResult = await detectTrashInImage(frameBase64, 0.45);
-        
-        // If trash is detected, draw bounding boxes and store the annotated image
+
+        const confidenceThreshold = 0.25;
+        console.log(`Calling detectTrashInImage with confidence threshold ${confidenceThreshold}`);
+        let roboflowResult = null;
+        try {
+          roboflowResult = await detectTrashInImage(frameBase64, confidenceThreshold);
+          console.log('Roboflow response:', JSON.stringify(roboflowResult, null, 2));
+        } catch (detectionError) {
+          console.error(`Roboflow detection failed at ${currentTime}s:`, detectionError);
+          continue;
+        }
+
         if (roboflowResult && roboflowResult.predictions && roboflowResult.predictions.length > 0) {
-          // Store detections with their timestamp
-          trashDetections.push({
-            timestamp: currentTime,
-            detections: roboflowResult.predictions
-          });
-          
-          // Add Roboflow detections
-          totalTrashCount += roboflowResult.predictions.length;
-          roboflowResult.predictions.forEach(prediction => {
-            allCategories.add(prediction.class);
-          });
+          const validPredictions = roboflowResult.predictions.filter(
+            p => p.confidence >= 0.1 && p.width > 5 && p.height > 5
+          );
+
+          if (validPredictions.length > 0) {
+            console.log(`Valid trash detected at ${currentTime}s: ${validPredictions.length} items`);
+            trashDetections.push({
+              timestamp: currentTime,
+              detections: validPredictions.map(p => ({
+                class: p.class,
+                confidence: p.confidence,
+                x: p.x,
+                y: p.y,
+                width: p.width,
+                height: p.height,
+              })),
+            });
+
+            const annotatedFrameBase64 = drawDetections(canvas, validPredictions);
+            trashDetectionImages.push(annotatedFrameBase64);
+
+            // Update max trash count if current frame has more detections
+            if (validPredictions.length > maxTrashCountPerFrame) {
+              maxTrashCountPerFrame = validPredictions.length;
+            }
+
+            totalTrashCount += validPredictions.length; // Keep total for potential future use or debugging
+            validPredictions.forEach(prediction => {
+              allCategories.add(prediction.class);
+            });
+          } else {
+            console.log(`No valid detections after filtering at ${currentTime}s`);
+          }
+        } else {
+          console.log(`No trash detected at ${currentTime}s`);
         }
       }
     }
-    
+
     if (window.updateProcessingStage) window.updateProcessingStage(3);
-    
-    // Calculate average flow metrics across all frame pairs
+
     const flowMetrics = calculateAverageFlowMetrics(flowVectors);
-    
+    const depthProfile = calculateDepthProfile(flowVectors);
+    const averageDepth = depthProfile.length > 0 ? depthProfile.reduce((sum, depth) => sum + depth, 0) / depthProfile.length : 0;
+    const maxDepth = depthProfile.length > 0 ? Math.max(...depthProfile) : 0;
+
     if (window.updateProcessingStage) window.updateProcessingStage(4);
-    
+
     video.pause();
-    
-    // Store the video URL for playback
+
     const videoUrl = URL.createObjectURL(file);
-    
+    URL.revokeObjectURL(video.src);
+
+    console.log('Analysis complete:', { totalTrashCount, trashCategories: Array.from(allCategories) });
+
     return {
       averageVelocity: flowMetrics.averageVelocity,
       flowMagnitude: flowMetrics.flowMagnitude,
-      trashCount: totalTrashCount,
+      trashCount: maxTrashCountPerFrame, // Use maxTrashCountPerFrame here
       trashCategories: Array.from(allCategories),
-      environmentalImpact: environmentalAnalysis || 'No significant environmental impact detected',
+      environmentalImpact: 'No significant environmental impact detected',
       frames,
       trashDetectionImages,
       flowVectors,
       videoUrl,
-      trashDetections
+      trashDetections,
+      depthProfile,
+      averageDepth,
+      maxDepth,
     };
   } catch (error) {
-    console.error("Error analyzing video:", error);
+    console.error('Error analyzing video:', error);
+    throw new Error('Video analysis failed');
+  } finally {
     URL.revokeObjectURL(video.src);
-    throw new Error("Video analysis failed");
   }
 }
 
@@ -130,45 +162,30 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
  * Calculate optical flow between two frames
  */
 function calculateOpticalFlow(previousFrame: ImageData, currentFrame: ImageData): {
-  velocities: number[],
-  directions: number[]
+  velocities: number[];
+  directions: number[];
 } {
   const velocities: number[] = [];
   const directions: number[] = [];
-  
-  // Grid size for optical flow calculation
   const gridSize = 10;
   const regionWidth = Math.floor(previousFrame.width / gridSize);
   const regionHeight = Math.floor(previousFrame.height / gridSize);
-  
+
   for (let i = 0; i < gridSize * gridSize; i++) {
     const gridX = i % gridSize;
     const gridY = Math.floor(i / gridSize);
-    
     const startX = gridX * regionWidth;
     const startY = gridY * regionHeight;
-    
-    // Calculate average motion vector for this grid cell
-    const motionVector = calculateMotionVector(
-      previousFrame, 
-      currentFrame, 
-      startX, 
-      startY, 
-      regionWidth, 
-      regionHeight
-    );
-    
-    // Convert to polar coordinates (magnitude and direction)
+
+    const motionVector = calculateMotionVector(previousFrame, currentFrame, startX, startY, regionWidth, regionHeight);
     const velocity = Math.sqrt(motionVector.x * motionVector.x + motionVector.y * motionVector.y);
     const direction = Math.atan2(motionVector.y, motionVector.x);
-    
-    // Scale velocity to meaningful units (m/s)
-    const scaledVelocity = velocity * 0.05 + 0.5;  // Scale factor and baseline
-    
+
+    const scaledVelocity = velocity * 0.05 + 0.5;
     velocities.push(Number(scaledVelocity.toFixed(2)));
     directions.push(Number(direction.toFixed(2)));
   }
-  
+
   return { velocities, directions };
 }
 
@@ -186,114 +203,108 @@ function calculateMotionVector(
   let sumDX = 0;
   let sumDY = 0;
   let count = 0;
-  
-  const sampleStep = 4;  // Sample every 4th pixel for performance
-  
+  const sampleStep = 4;
+
   for (let y = startY; y < startY + height; y += sampleStep) {
     for (let x = startX; x < startX + width; x += sampleStep) {
       if (x >= prevFrame.width || y >= prevFrame.height) continue;
-      
+
       const idx = (y * prevFrame.width + x) * 4;
-      
-      // Compare brightness (simple grayscale conversion)
-      const prevBrightness = 
-        0.299 * prevFrame.data[idx] + 
-        0.587 * prevFrame.data[idx + 1] + 
-        0.114 * prevFrame.data[idx + 2];
-      
-      // Find best matching pixel in a small search window
-      let bestMatch = { x: x, y: y, diff: Infinity };
-      
+      const prevBrightness =
+        0.299 * prevFrame.data[idx] + 0.587 * prevFrame.data[idx + 1] + 0.114 * prevFrame.data[idx + 2];
+
+      let bestMatch = { x, y, diff: Infinity };
       const searchRadius = 8;
       for (let sy = Math.max(0, y - searchRadius); sy < Math.min(currFrame.height, y + searchRadius); sy += 2) {
         for (let sx = Math.max(0, x - searchRadius); sx < Math.min(currFrame.width, x + searchRadius); sx += 2) {
           const searchIdx = (sy * currFrame.width + sx) * 4;
-          
-          const currBrightness = 
-            0.299 * currFrame.data[searchIdx] + 
-            0.587 * currFrame.data[searchIdx + 1] + 
-            0.114 * currFrame.data[searchIdx + 2];
-          
+          const currBrightness =
+            0.299 * currFrame.data[searchIdx] + 0.587 * currFrame.data[searchIdx + 1] + 0.114 * currFrame.data[searchIdx + 2];
           const diff = Math.abs(prevBrightness - currBrightness);
-          
+
           if (diff < bestMatch.diff) {
             bestMatch = { x: sx, y: sy, diff };
           }
         }
       }
-      
-      // Only consider good matches
+
       if (bestMatch.diff < 30) {
-        sumDX += (bestMatch.x - x);
-        sumDY += (bestMatch.y - y);
+        sumDX += bestMatch.x - x;
+        sumDY += bestMatch.y - y;
         count++;
       }
     }
   }
-  
-  // Average the displacement vectors
-  return { 
-    x: count > 0 ? sumDX / count : 0, 
-    y: count > 0 ? sumDY / count : 0 
-  };
+
+  return { x: count > 0 ? sumDX / count : 0, y: count > 0 ? sumDY / count : 0 };
 }
 
 /**
  * Calculate average flow metrics across all frame pairs
  */
-function calculateAverageFlowMetrics(flowVectors: Array<{velocities: number[], directions: number[]}>): {
+function calculateAverageFlowMetrics(flowVectors: Array<{ velocities: number[]; directions: number[] }>): {
   averageVelocity: number;
   flowMagnitude: number;
 } {
-  if (flowVectors.length === 0) {
-    return { averageVelocity: 0, flowMagnitude: 0 };
-  }
-  
+  if (flowVectors.length === 0) return { averageVelocity: 0, flowMagnitude: 0 };
+
   let totalVelocity = 0;
   let totalVectors = 0;
-  
+
   flowVectors.forEach(vector => {
     vector.velocities.forEach(velocity => {
       totalVelocity += velocity;
       totalVectors++;
     });
   });
-  
+
   const averageVelocity = totalVelocity / totalVectors;
-  
   return {
     averageVelocity: Number(averageVelocity.toFixed(2)),
-    flowMagnitude: Number((averageVelocity * 2).toFixed(2))  // Simplified formula
+    flowMagnitude: Number((averageVelocity * 2).toFixed(2)),
   };
 }
 
-// Add helper function to draw bounding boxes and labels
+/**
+ * Calculate depth profile from flow vectors
+ */
+function calculateDepthProfile(flowVectors: Array<{ velocities: number[]; directions: number[] }>): number[] {
+  const depthProfile: number[] = [];
+  if (flowVectors.length === 0) return depthProfile;
+
+  for (let i = 0; i < flowVectors[0].velocities.length; i++) {
+    const avgVelocity =
+      flowVectors.reduce((sum, vector) => sum + vector.velocities[i], 0) / flowVectors.length;
+    const depth = 2.5 / (avgVelocity + 0.5);
+    depthProfile.push(Number(depth.toFixed(2)));
+  }
+
+  return depthProfile;
+}
+
+/**
+ * Draw bounding boxes and labels on the canvas
+ */
 function drawDetections(canvas: HTMLCanvasElement, predictions: any[]): string {
   const ctx = canvas.getContext('2d');
   if (!ctx) return canvas.toDataURL();
 
-  // Style for the bounding boxes - enhanced for better visibility
   ctx.strokeStyle = '#ff0000';
-  ctx.lineWidth = 4; 
+  ctx.lineWidth = 4;
   ctx.font = 'bold 16px Arial';
   ctx.fillStyle = '#ff0000';
 
   predictions.forEach(prediction => {
     const x = prediction.x - prediction.width / 2;
     const y = prediction.y - prediction.height / 2;
-    
-    // Draw the box with thicker lines
+
     ctx.strokeRect(x, y, prediction.width, prediction.height);
-    
-    // Draw semi-transparent fill
     ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
     ctx.fillRect(x, y, prediction.width, prediction.height);
-    
-    // Draw the label with better contrast
+
     const label = `${prediction.class} ${Math.round(prediction.confidence * 100)}%`;
     ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
     ctx.fillRect(x, y - 25, ctx.measureText(label).width + 10, 22);
-    
     ctx.fillStyle = '#ffffff';
     ctx.fillText(label, x + 5, y - 10);
   });

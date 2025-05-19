@@ -1,13 +1,29 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { UploadCloud, AlertCircle } from 'lucide-react';
+import { UploadCloud, AlertCircle, MapPin } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
+// Define river data
+const riverData = {
+  "Johor": ["Sungai Johor", "Sungai Endau", "Sungai Muar", "Sungai Batu Pahat"],
+  "Kedah": ["Sungai Muda", "Sungai Kedah", "Sungai Merbok", "Sungai Pedu"],
+  "Kelantan": ["Sungai Kelantan", "Sungai Galas", "Sungai Lebir", "Sungai Pergau"],
+  "Malacca": ["Sungai Malacca", "Sungai Kesang", "Sungai Duyong"],
+  "Negeri Sembilan": ["Sungai Linggi", "Sungai Muar", "Sungai Rembau"],
+  "Pahang": ["Sungai Pahang", "Sungai Kuantan", "Sungai Tembeling", "Sungai Jelai"],
+  "Penang": ["Sungai Pinang", "Sungai Perai", "Sungai Juru"],
+  "Perak": ["Sungai Perak", "Sungai Kinta", "Sungai Bernam", "Sungai Batang Padang"],
+  "Perlis": ["Sungai Perlis", "Sungai Chuchuh", "Sungai Arau"],
+  "Sabah": ["Sungai Kinabatangan", "Sungai Padas", "Sungai Segama", "Sungai Papar"],
+  "Sarawak": ["Sungai Rajang", "Sungai Baram", "Sungai Sarawak", "Sungai Lupar"],
+  "Selangor": ["Sungai Selangor", "Sungai Klang", "Sungai Langat", "Sungai Bernam"],
+  "Terengganu": ["Sungai Terengganu", "Sungai Dungun", "Sungai Kemaman", "Sungai Besut"],
+};
+
 interface UploadSectionProps {
-  onVideoUploaded: (file: File) => void;
+  onVideoUploaded: (file: File, location: string, river: string) => void;
   isProcessing: boolean;
 }
 
@@ -15,7 +31,32 @@ const UploadSection: React.FC<UploadSectionProps> = ({ onVideoUploaded, isProces
   const [dragActive, setDragActive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [location, setLocation] = useState<string>('');
+  const [selectedRiver, setSelectedRiver] = useState<string>('');
+  const [rivers, setRivers] = useState<string[]>([]);
+  const [coordinates, setCoordinates] = useState<{latitude: number, longitude: number} | null>(null);
   const { toast } = useToast();
+
+  const handleStateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const state = e.target.value;
+    setLocation(state);
+    setRivers(riverData[state] || []);
+    setSelectedRiver('');
+  };
+
+  useEffect(() => {
+    // Fetch user's current location
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        const { latitude, longitude } = position.coords;
+        // Mock function to get state from coordinates
+        const state = getStateFromCoordinates(latitude, longitude);
+        setLocation(state);
+        setRivers(riverData[state] || []);
+        setCoordinates({latitude, longitude});
+      });
+    }
+  }, []);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -59,7 +100,7 @@ const UploadSection: React.FC<UploadSectionProps> = ({ onVideoUploaded, isProces
       
       if (progress >= 100) {
         clearInterval(interval);
-        onVideoUploaded(file);
+        onVideoUploaded(file, location, selectedRiver);
       }
     }, 100);
   };
@@ -107,7 +148,6 @@ const UploadSection: React.FC<UploadSectionProps> = ({ onVideoUploaded, isProces
             </span>
           </div>
         </div>
-        
         {selectedFile && (
           <div className="mt-4">
             <div className="flex items-center justify-between text-sm mb-1">
@@ -126,9 +166,64 @@ const UploadSection: React.FC<UploadSectionProps> = ({ onVideoUploaded, isProces
             </p>
           </div>
         )}
+
+        {/* Current location coordinates */}
+        {coordinates && (
+          <div className="mt-4 flex items-center space-x-2 text-sm text-gray-600">
+            <MapPin className="h-4 w-4" />
+            <span>{coordinates.latitude.toFixed(4)}°N, {coordinates.longitude.toFixed(4)}°E</span>
+          </div>
+        )}
+
+        {/* State selection dropdown */}
+        <div className="mt-4">
+          <label htmlFor="state-select" className="block text-sm font-medium text-gray-700">
+            Select a state
+          </label>
+          <select
+            id="state-select"
+            name="state"
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
+            value={location}
+            onChange={handleStateChange}
+          >
+            <option value="">Choose a state</option>
+            {Object.keys(riverData).map((state) => (
+              <option key={state} value={state}>{state}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* River selection dropdown */}
+        {location && rivers.length > 0 && (
+          <div className="mt-4">
+            <label htmlFor="river-select" className="block text-sm font-medium text-gray-700">
+              Select a river in {location}
+            </label>
+            <select
+              id="river-select"
+              name="river"
+              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
+              value={selectedRiver}
+              onChange={(e) => setSelectedRiver(e.target.value)}
+            >
+              <option value="">Choose a river</option>
+              {rivers.map((river) => (
+                <option key={river} value={river}>{river}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 };
+
+// Mock function to get state from coordinates
+function getStateFromCoordinates(latitude: number, longitude: number): string {
+  // This function should be replaced with actual logic to determine the state
+  // based on latitude and longitude
+  return "Selangor"; // Example return value
+}
 
 export default UploadSection;

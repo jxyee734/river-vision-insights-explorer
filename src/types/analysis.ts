@@ -21,4 +21,10 @@ export interface AnalysisResult {
       height: number; // normalized height (0-1)
     }>;
   }>;
+  
+  // Depth analysis fields
+  depthProfile?: number[];
+  averageDepth?: number;
+  maxDepth?: number;
+  pollutionData?: any; // Add this property to fix the error
 }

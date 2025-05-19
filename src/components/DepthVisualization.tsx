@@ -1,7 +1,5 @@
-
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface DepthVisualizationProps {
   depthProfile: number[];
@@ -11,69 +9,68 @@ interface DepthVisualizationProps {
 
 const DepthVisualization: React.FC<DepthVisualizationProps> = ({ 
   depthProfile, 
-  averageDepth,
+  averageDepth, 
   maxDepth 
 }) => {
+  // Prepare chart data from depth profile
   const chartData = depthProfile.map((depth, index) => ({
-    position: `P${index + 1}`,
-    depth: depth,
+    name: `Point ${index + 1}`,
+    depth: depth.toFixed(2),
+    average: averageDepth,
   }));
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>River Depth Profile</span>
-          <div className="text-sm font-normal flex flex-col items-end">
-            <span className="text-xs text-muted-foreground">Average: {averageDepth} m</span>
-            <span className="text-xs text-muted-foreground">Maximum: {maxDepth} m</span>
+    <div className="bg-white rounded-lg shadow p-4">
+      <h3 className="font-medium text-gray-900 mb-4">River Depth Profile</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg">
+          <div>
+            <h3 className="text-sm font-medium text-blue-800">Average Depth</h3>
+            <div className="flex items-baseline">
+              <span className="text-3xl font-bold text-blue-700">{averageDepth.toFixed(2)}</span>
+              <span className="ml-1 text-sm text-blue-600">m</span>
+            </div>
           </div>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={chartData}
-              margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
-            >
-              <defs>
-                <linearGradient id="depthGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#0D47A1" stopOpacity={0.8} />
-                  <stop offset="100%" stopColor="#90CAF9" stopOpacity={0.2} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="position" />
-              <YAxis 
-                domain={[0, Math.ceil(maxDepth * 1.2)]} 
-                label={{ value: 'Depth (meters)', angle: -90, position: 'insideLeft' }} 
-              />
-              <Tooltip 
-                formatter={(value) => [`${value} m`, 'Depth']}
-                labelFormatter={(label) => `Position ${label}`}
-              />
-              <Area 
-                type="monotone" 
-                dataKey="depth" 
-                stroke="#0D47A1" 
-                fillOpacity={1}
-                fill="url(#depthGradient)" 
-                isAnimationActive={true}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
         </div>
-        
-        <div className="mt-4 p-4 rounded-md bg-blue-50 border border-blue-100">
-          <h4 className="text-sm font-medium text-blue-800">How is depth calculated?</h4>
-          <p className="text-xs text-blue-600 mt-1">
-            River depth is estimated using computer vision techniques that analyze water color, 
-            turbidity, and visual references. Accuracy may vary based on water clarity and lighting conditions.
-          </p>
+        <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg">
+          <div>
+            <h3 className="text-sm font-medium text-blue-800">Max Depth</h3>
+            <div className="flex items-baseline">
+              <span className="text-3xl font-bold text-blue-700">{maxDepth.toFixed(2)}</span>
+              <span className="ml-1 text-sm text-blue-600">m</span>
+            </div>
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+      <div className="h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis label={{ value: 'Depth (m)', angle: -90, position: 'insideLeft' }} />
+            <Tooltip 
+              formatter={(value) => [`${value} m`, 'Average Depth']}
+              labelFormatter={(label) => `Location: ${label}`}
+            />
+            <Area 
+              type="monotone" 
+              dataKey="depth" 
+              stroke="#3b82f6" 
+              fill="#93c5fd" 
+              name="Depth"
+            />
+            <Area 
+              type="monotone" 
+              dataKey="average" 
+              stroke="#1d4ed8" 
+              fill="#60a5fa" 
+              strokeDasharray="5 5"
+              name="Average"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
   );
 };
 
