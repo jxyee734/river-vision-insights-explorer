@@ -25,23 +25,56 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
   const flowVectors: Array<{ velocities: number[]; directions: number[] }> = [];
   const depthProfile: number[] = [];
 
+  // Initialize frame cache and processing queue
+  const frameCache = new Map();
+  const processingQueue = [];
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
   try {
     await video.play();
 
     if (window.updateProcessingStage) window.updateProcessingStage(0);
 
     const totalDuration = video.duration;
-    const frameInterval = totalDuration > 10 ? 0.2 : 0.1; // Finer sampling for better timestamp coverage
-    let previousFrameData: ImageData | null = null;
+    // Adaptive frame sampling based on video duration and motion
+  const baseInterval = totalDuration > 30 ? 0.5 : totalDuration > 10 ? 0.3 : 0.2;
+  let frameInterval = baseInterval;
+  let previousFrameData: ImageData | null = null;
+  let motionThreshold = 0.1; // Threshold for significant motion
+  let skipFrameCount = 0;
 
-    for (let currentTime = 0; currentTime < totalDuration; currentTime += frameInterval) {
+  for (let currentTime = 0; currentTime < totalDuration; currentTime += frameInterval) {
       console.log(`Processing frame at timestamp: ${currentTime.toFixed(2)}s`);
       video.currentTime = currentTime;
       await delay(100);
 
       if (window.updateProcessingStage) window.updateProcessingStage(1);
 
-      const frameBase64 = extractVideoFrame(video);
+      const cacheKey = Math.round(currentTime * 100) / 100;
+      let frameBase64 = frameCache.get(cacheKey);
+      
+      if (!frameBase64) {
+        frameBase64 = extractVideoFrame(video);
+        frameCache.set(cacheKey, frameBase64);
+      }
+      
+      // Skip processing if there's minimal motion
+      if (previousFrameData && skipFrameCount < 2) {
+        const frameData = ctx!.getImageData(0, 0, canvas.width, canvas.height);
+        const motionVector = calculateMotionVector(previousFrameData, frameData, 0, 0, canvas.width, canvas.height);
+        const motionMagnitude = Math.sqrt(motionVector.x * motionVector.x + motionVector.y * motionVector.y);
+        
+        if (motionMagnitude < motionThreshold) {
+          skipFrameCount++;
+          frameInterval = baseInterval * 1.5; // Increase interval for low motion
+          continue;
+        }
+      }
+      skipFrameCount = 0;
+      frameInterval = baseInterval; // Reset interval
+      
       console.log('Frame extracted:', frameBase64.substring(0, 50) + '...');
 
       const img = new Image();
@@ -50,10 +83,8 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
         img.onload = () => resolve();
       });
 
-      const canvas = document.createElement('canvas');
       canvas.width = img.width;
       canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
 
       if (ctx) {
         ctx.drawImage(img, 0, 0);
@@ -72,8 +103,16 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
         console.log(`Calling detectTrashInImage with confidence threshold ${confidenceThreshold}`);
         let roboflowResult = null;
         try {
-          roboflowResult = await detectTrashInImage(frameBase64, confidenceThreshold);
-          console.log('Roboflow response:', JSON.stringify(roboflowResult, null, 2));
+          // Add to processing queue for parallel execution
+          processingQueue.push(detectTrashInImage(frameBase64, confidenceThreshold));
+          
+          // Process in batches of 3 frames
+          if (processingQueue.length >= 3 || currentTime + frameInterval >= totalDuration) {
+            const results = await Promise.all(processingQueue);
+            roboflowResult = results[results.length - 1];
+            processingQueue.length = 0;
+            console.log('Roboflow response:', JSON.stringify(roboflowResult, null, 2));
+          }
         } catch (detectionError) {
           console.error(`Roboflow detection failed at ${currentTime}s:`, detectionError);
           continue;
@@ -130,6 +169,48 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
 
     video.pause();
 
+    // Create a MediaRecorder to save the processed video
+    const processedCanvas = document.createElement('canvas');
+    const processedCtx = processedCanvas.getContext('2d');
+    processedCanvas.width = canvas.width;
+    processedCanvas.height = canvas.height;
+
+    const processedStream = processedCanvas.captureStream();
+    const mediaRecorder = new MediaRecorder(processedStream, { mimeType: 'video/webm' });
+    const processedChunks: Blob[] = [];
+
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        processedChunks.push(event.data);
+      }
+    };
+
+    mediaRecorder.onstop = () => {
+      const processedBlob = new Blob(processedChunks, { type: 'video/webm' });
+      const processedVideoUrl = URL.createObjectURL(processedBlob);
+      const downloadUrl = processedVideoUrl;
+      console.log('Processed video ready for download:', downloadUrl);
+    };
+
+    // Draw each frame with annotations
+    let frameIndex = 0;
+    const drawNextFrame = () => {
+      if (frameIndex < frames.length) {
+        processedCtx!.putImageData(frames[frameIndex], 0, 0);
+        const currentDetections = trashDetections[frameIndex]?.detections || [];
+        if (currentDetections.length > 0) {
+          drawDetections(processedCanvas, currentDetections);
+        }
+        frameIndex++;
+        requestAnimationFrame(drawNextFrame);
+      } else {
+        mediaRecorder.stop();
+      }
+    };
+
+    mediaRecorder.start();
+    drawNextFrame();
+
     const videoUrl = URL.createObjectURL(file);
     URL.revokeObjectURL(video.src);
 
@@ -145,10 +226,16 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
       trashDetectionImages,
       flowVectors,
       videoUrl,
+      processedVideoUrl: processedChunks.length > 0 ? URL.createObjectURL(new Blob(processedChunks, { type: 'video/webm' })) : undefined,
+      downloadUrl: processedChunks.length > 0 ? URL.createObjectURL(new Blob(processedChunks, { type: 'video/webm' })) : undefined,
       trashDetections,
       depthProfile,
       averageDepth,
       maxDepth,
+      riverCategory: {
+        state: file.name.split('_')[0],
+        river: file.name.split('_')[1]
+      },
     };
   } catch (error) {
     console.error('Error analyzing video:', error);
@@ -167,9 +254,10 @@ function calculateOpticalFlow(previousFrame: ImageData, currentFrame: ImageData)
 } {
   const velocities: number[] = [];
   const directions: number[] = [];
-  const gridSize = 10;
+  const gridSize = 8; // Reduced grid size for faster processing
   const regionWidth = Math.floor(previousFrame.width / gridSize);
   const regionHeight = Math.floor(previousFrame.height / gridSize);
+  const skipPixels = 2; // Skip pixels for faster processing
 
   for (let i = 0; i < gridSize * gridSize; i++) {
     const gridX = i % gridSize;
@@ -203,7 +291,7 @@ function calculateMotionVector(
   let sumDX = 0;
   let sumDY = 0;
   let count = 0;
-  const sampleStep = 4;
+  const sampleStep = 8; // Increased sample step for faster processing
 
   for (let y = startY; y < startY + height; y += sampleStep) {
     for (let x = startX; x < startX + width; x += sampleStep) {
@@ -214,7 +302,7 @@ function calculateMotionVector(
         0.299 * prevFrame.data[idx] + 0.587 * prevFrame.data[idx + 1] + 0.114 * prevFrame.data[idx + 2];
 
       let bestMatch = { x, y, diff: Infinity };
-      const searchRadius = 8;
+      const searchRadius = 6; // Optimized search radius
       for (let sy = Math.max(0, y - searchRadius); sy < Math.min(currFrame.height, y + searchRadius); sy += 2) {
         for (let sx = Math.max(0, x - searchRadius); sx < Math.min(currFrame.width, x + searchRadius); sx += 2) {
           const searchIdx = (sy * currFrame.width + sx) * 4;

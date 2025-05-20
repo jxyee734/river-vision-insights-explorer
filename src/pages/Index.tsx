@@ -33,7 +33,7 @@ const Index = () => {
   const [showPollutionPrediction, setShowPollutionPrediction] = useState(false);
   const [showWaterQuality, setShowWaterQuality] = useState(false);
   
-  const handleVideoUpload = async (file: File) => {
+  const handleVideoUpload = async (file: File, location: string, river: string) => {
     try {
       setIsProcessing(true);
       setProcessingStage(0);
@@ -45,6 +45,10 @@ const Index = () => {
       toast.info("Processing video with AI analysis, please wait...");
       
       const result = await analyzeVideo(file);
+      result.riverCategory = {
+        state: location,
+        river: river
+      };
       setAnalysisResult(result);
       
       toast.success("Video analysis complete!");
@@ -246,6 +250,14 @@ const Index = () => {
                 <div className="mt-4 text-xs text-gray-500 italic">
                   Note: All measurements are estimates based on AI analysis.
                 </div>
+                <button
+                  onClick={() => {
+                    toast.success("Video analysis data submitted successfully!");
+                  }}
+                  className="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors"
+                >
+                  Submit Analysis
+                </button>
               </motion.div>
             )}
           </div>

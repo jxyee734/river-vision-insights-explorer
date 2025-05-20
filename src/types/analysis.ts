@@ -8,7 +8,9 @@ export interface AnalysisResult {
   environmentalImpact: string;
   frames: ImageData[];
   trashDetectionImages: string[]; // We'll keep this for backward compatibility
-  flowVectors: Array<{velocities: number[], directions: number[]}>;
+  flowVectors: Array<{velocities: number[], directions: number[]}>;  
+  processedVideoUrl?: string; // URL for the processed video with annotations
+  downloadUrl?: string; // URL for downloading the processed video
   videoUrl?: string; // URL to the processed video
   trashDetections?: Array<{
     timestamp: number;
@@ -27,4 +29,8 @@ export interface AnalysisResult {
   averageDepth?: number;
   maxDepth?: number;
   pollutionData?: any; // Add this property to fix the error
+  riverCategory?: {
+    state: string;
+    river: string;
+  };
 }
