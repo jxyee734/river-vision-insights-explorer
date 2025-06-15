@@ -909,8 +909,9 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
                   step={1}
                   value={[windDirection]}
                   onValueChange={(value) => setWindDirection(value[0])}
-                />
-                <div className="text-xs text-gray-500">0° = North, 90° = East, 180° = South, 270° = West</div>
+                >
+                  <div className="text-xs text-gray-500">0° = North, 90° = East, 180° = South, 270° = West</div>
+                </Slider>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="precipitation">Precipitation ({precipitation.toFixed(1)} mm/h)</Label>
@@ -932,6 +933,8 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
             {results && (
               <div className="mt-6 space-y-6">
                 <h3 className="text-lg font-semibold">Prediction Results</h3>
+                
+                {/* Results summary cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="p-4 bg-green-50 border border-green-100 rounded-md text-sm">
                     <h4 className="font-semibold text-green-800 mb-2">Transport Metrics</h4>
@@ -967,6 +970,7 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
                   </div>
                 </div>
 
+                {/* Map and Charts Tabs */}
                 <div className="mt-6">
                   <Tabs defaultValue="map" className="w-full">
                     <TabsList className="mb-4">
@@ -979,9 +983,17 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
                         Data Charts
                       </TabsTrigger>
                     </TabsList>
+                    
                     <TabsContent value="map" className="space-y-4">
+                      <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+                        <p className="text-blue-800 text-sm">
+                          <strong>🗺️ Interactive River Map:</strong> Blue line shows the full river path, 
+                          red line highlights the polluted segment from source to threshold point.
+                        </p>
+                      </div>
                       <RiverMap results={results} riverPath={riverPath} />
                     </TabsContent>
+                    
                     <TabsContent value="chart" className="space-y-4">
                       <div className="flex justify-center mb-4">
                         <div className="inline-flex rounded-md shadow-sm">
