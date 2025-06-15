@@ -18,7 +18,7 @@ interface RoboflowResponse {
   };
 }
 
-const ROBOFLOW_API_KEY = "ytCkzm5zdnOMEbgzp6t1";
+const ROBOFLOW_API_KEY = "ieBcg3YIf3cibjZBxtZr";
 const DEFAULT_CONFIDENCE_THRESHOLD = 0.45; // Increased default threshold for better accuracy
 
 const MAX_RETRIES = 3;
