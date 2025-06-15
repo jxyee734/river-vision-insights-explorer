@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AreaChart, BarChart, LineChart } from 'lucide-react';
+import RiverMap from './RiverMap';
 
 // Define advanced types for river path points
 interface RiverCharacteristics {
@@ -374,7 +375,6 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
   const [results, setResults] = useState<PollutionResults | null>(null);
   const [viewMode, setViewMode] = useState<string>("density");
   const svgRef = useRef<SVGSVGElement>(null);
-  const mapRef = useRef<SVGSVGElement>(null);
 
   const sourceIndex = riverPath.findIndex(point => point.id === selectedLocation);
 
@@ -601,211 +601,6 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
   useEffect(() => {
     calculatePollutionSpread();
   }, [sourceIndex, selectedPollutant, flowVelocity, windSpeed, windDirection, initialDensity, trappingRate, temperature, precipitation]);
-
-  // Draw the river map visualization
-  useEffect(() => {
-    if (!results || !mapRef.current) return;
-
-    const width = 800;
-    const height = 400;
-    const margin = { top: 20, right: 30, bottom: 40, left: 50 };
-
-    const svg = d3.select(mapRef.current);
-    svg.selectAll('*').remove();
-
-    // Extract coordinates for river path
-    const minLat = d3.min(riverPath.map(d => d.lat)) || 0;
-    const maxLat = d3.max(riverPath.map(d => d.lat)) || 0;
-    const minLon = d3.min(riverPath.map(d => d.lon)) || 0;
-    const maxLon = d3.max(riverPath.map(d => d.lon)) || 0;
-
-    // Add padding to the bounding box
-    const latPadding = (maxLat - minLat) * 0.1;
-    const lonPadding = (maxLon - minLon) * 0.1;
-
-    // Create scales for the map
-    const latScale = d3.scaleLinear()
-      .domain([minLat - latPadding, maxLat + latPadding])
-      .range([height - margin.bottom, margin.top]);
-
-    const lonScale = d3.scaleLinear()
-      .domain([minLon - lonPadding, maxLon + lonPadding])
-      .range([margin.left, width - margin.right]);
-
-    // Create a color scale for pollution levels
-    const colorScale = d3.scaleSequential(d3.interpolateRdYlGn)
-      .domain([d3.max(results.pollutionData.map((d: any) => d.density)) || 0, 0]);
-
-    // Draw the river path
-    const riverLine = d3.line<RiverPoint>()
-      .x(d => lonScale(d.lon))
-      .y(d => latScale(d.lat))
-      .curve(d3.curveCatmullRom);
-
-    // Draw the base river
-    svg.append('path')
-      .datum(riverPath)
-      .attr('d', riverLine)
-      .attr('fill', 'none')
-      .attr('stroke', '#0099ff')
-      .attr('stroke-width', 8)
-      .attr('opacity', 0.5);
-
-    // Draw the polluted segments with color based on density
-    const pollutedPath = results.pollutionData
-      .filter((d: any) => d.density > 0)
-      .map((d: any) => d.point);
-
-    if (pollutedPath.length > 0) {
-      // Draw colored segments
-      for (let i = 0; i < pollutedPath.length - 1; i++) {
-        const startPoint = pollutedPath[i];
-        const endPoint = pollutedPath[i + 1];
-        const density = results.pollutionData.find((d: any) => d.point.id === startPoint.id)?.density || 0;
-        
-        svg.append('line')
-          .attr('x1', lonScale(startPoint.lon))
-          .attr('y1', latScale(startPoint.lat))
-          .attr('x2', lonScale(endPoint.lon))
-          .attr('y2', latScale(endPoint.lat))
-          .attr('stroke', colorScale(density))
-          .attr('stroke-width', 6)
-          .attr('opacity', 0.8);
-      }
-    }
-
-    // Add location markers for all points
-    svg.selectAll('.location-marker')
-      .data(riverPath)
-      .enter()
-      .append('circle')
-      .attr('class', 'location-marker')
-      .attr('cx', d => lonScale(d.lon))
-      .attr('cy', d => latScale(d.lat))
-      .attr('r', 5)
-      .attr('fill', d => d.id === selectedLocation ? 'red' : '#333')
-      .attr('stroke', '#fff')
-      .attr('stroke-width', 1.5);
-
-    // Highlight source and threshold points
-    svg.append('circle')
-      .attr('cx', lonScale(results.sourcePoint.lon))
-      .attr('cy', latScale(results.sourcePoint.lat))
-      .attr('r', 8)
-      .attr('fill', 'red')
-      .attr('stroke', '#fff')
-      .attr('stroke-width', 2);
-      
-    svg.append('circle')
-      .attr('cx', lonScale(results.thresholdPoint.lon))
-      .attr('cy', latScale(results.thresholdPoint.lat))
-      .attr('r', 8)
-      .attr('fill', 'green')
-      .attr('stroke', '#fff')
-      .attr('stroke-width', 2);
-
-    // Add location labels (show only a few to avoid clutter)
-    const labelPoints = [0, 2, 5, 8, 10]; // Indices of points to label
-    
-    svg.selectAll('.location-label')
-      .data(labelPoints.map(i => riverPath[i]))
-      .enter()
-      .append('text')
-      .attr('class', 'location-label')
-      .attr('x', d => lonScale(d.lon))
-      .attr('y', d => latScale(d.lat) - 10)
-      .attr('text-anchor', 'middle')
-      .attr('font-size', 12)
-      .attr('font-weight', d => d.id === selectedLocation ? 'bold' : 'normal')
-      .attr('fill', '#333')
-      .text(d => d.name);
-
-    // Add a legend for pollution density
-    const legendWidth = 200;
-    const legendHeight = 20;
-    const legendX = width - margin.right - legendWidth;
-    const legendY = height - margin.bottom + 30;
-    
-    // Create gradient for legend
-    const defs = svg.append('defs');
-    const gradient = defs.append('linearGradient')
-      .attr('id', 'density-gradient')
-      .attr('x1', '0%')
-      .attr('x2', '100%')
-      .attr('y1', '0%')
-      .attr('y2', '0%');
-      
-    // Set the color stops for the gradient
-    const numStops = 10;
-    for (let i = 0; i <= numStops; i++) {
-      gradient.append('stop')
-        .attr('offset', `${i * 100 / numStops}%`)
-        .attr('stop-color', colorScale(i * (d3.max(results.pollutionData.map((d: any) => d.density)) || 0) / numStops));
-    }
-    
-    // Draw the legend bar
-    svg.append('rect')
-      .attr('x', legendX)
-      .attr('y', legendY)
-      .attr('width', legendWidth)
-      .attr('height', legendHeight)
-      .style('fill', 'url(#density-gradient)');
-      
-    // Add legend title
-    svg.append('text')
-      .attr('x', legendX + legendWidth / 2)
-      .attr('y', legendY - 5)
-      .attr('text-anchor', 'middle')
-      .attr('font-size', 12)
-      .text('Pollution Density');
-      
-    // Add legend labels
-    svg.append('text')
-      .attr('x', legendX)
-      .attr('y', legendY + legendHeight + 15)
-      .attr('text-anchor', 'start')
-      .attr('font-size', 10)
-      .text('High');
-      
-    svg.append('text')
-      .attr('x', legendX + legendWidth)
-      .attr('y', legendY + legendHeight + 15)
-      .attr('text-anchor', 'end')
-      .attr('font-size', 10)
-      .text('Low');
-      
-    // Add a north arrow
-    const arrowX = margin.left + 30;
-    const arrowY = margin.top + 30;
-    
-    svg.append('circle')
-      .attr('cx', arrowX)
-      .attr('cy', arrowY)
-      .attr('r', 15)
-      .attr('fill', 'white')
-      .attr('stroke', '#333')
-      .attr('stroke-width', 1);
-      
-    svg.append('line')
-      .attr('x1', arrowX)
-      .attr('y1', arrowY + 10)
-      .attr('x2', arrowX)
-      .attr('y2', arrowY - 10)
-      .attr('stroke', '#333')
-      .attr('stroke-width', 2);
-      
-    svg.append('path')
-      .attr('d', `M${arrowX - 5},${arrowY - 5} L${arrowX},${arrowY - 10} L${arrowX + 5},${arrowY - 5}`)
-      .attr('fill', '#333');
-      
-    svg.append('text')
-      .attr('x', arrowX)
-      .attr('y', arrowY + 5)
-      .attr('text-anchor', 'middle')
-      .attr('font-size', 10)
-      .attr('font-weight', 'bold')
-      .text('N');
-  }, [results, mapRef]);
 
   // Draw the data visualization charts
   useEffect(() => {
@@ -1185,11 +980,7 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
                       </TabsTrigger>
                     </TabsList>
                     <TabsContent value="map" className="space-y-4">
-                      <div className="flex justify-center">
-                        <div className="w-full overflow-x-auto">
-                          <svg ref={mapRef} width={800} height={400}></svg>
-                        </div>
-                      </div>
+                      <RiverMap results={results} riverPath={riverPath} />
                     </TabsContent>
                     <TabsContent value="chart" className="space-y-4">
                       <div className="flex justify-center mb-4">
