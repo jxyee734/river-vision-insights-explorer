@@ -1,12 +1,22 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import * as d3 from 'd3';
+import { MapContainer, TileLayer, Polyline, CircleMarker, Popup } from 'react-leaflet';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AreaChart, BarChart, LineChart } from 'lucide-react';
+import L from 'leaflet';
+import * as d3 from 'd3';
+
+// Fix for default markers in react-leaflet
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 // Define advanced types for river path points
 interface RiverCharacteristics {
@@ -373,8 +383,7 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
   const [precipitation, setPrecipitation] = useState<number>(10);
   const [results, setResults] = useState<PollutionResults | null>(null);
   const [viewMode, setViewMode] = useState<string>("density");
-  const svgRef = useRef<SVGSVGElement>(null);
-  const mapRef = useRef<SVGSVGElement>(null);
+  const svgRef = React.useRef<SVGSVGElement>(null);
 
   const sourceIndex = riverPath.findIndex(point => point.id === selectedLocation);
 
@@ -602,210 +611,16 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
     calculatePollutionSpread();
   }, [sourceIndex, selectedPollutant, flowVelocity, windSpeed, windDirection, initialDensity, trappingRate, temperature, precipitation]);
 
-  // Draw the river map visualization
-  useEffect(() => {
-    if (!results || !mapRef.current) return;
-
-    const width = 800;
-    const height = 400;
-    const margin = { top: 20, right: 30, bottom: 40, left: 50 };
-
-    const svg = d3.select(mapRef.current);
-    svg.selectAll('*').remove();
-
-    // Extract coordinates for river path
-    const minLat = d3.min(riverPath.map(d => d.lat)) || 0;
-    const maxLat = d3.max(riverPath.map(d => d.lat)) || 0;
-    const minLon = d3.min(riverPath.map(d => d.lon)) || 0;
-    const maxLon = d3.max(riverPath.map(d => d.lon)) || 0;
-
-    // Add padding to the bounding box
-    const latPadding = (maxLat - minLat) * 0.1;
-    const lonPadding = (maxLon - minLon) * 0.1;
-
-    // Create scales for the map
-    const latScale = d3.scaleLinear()
-      .domain([minLat - latPadding, maxLat + latPadding])
-      .range([height - margin.bottom, margin.top]);
-
-    const lonScale = d3.scaleLinear()
-      .domain([minLon - lonPadding, maxLon + lonPadding])
-      .range([margin.left, width - margin.right]);
-
-    // Create a color scale for pollution levels
-    const colorScale = d3.scaleSequential(d3.interpolateRdYlGn)
-      .domain([d3.max(results.pollutionData.map((d: any) => d.density)) || 0, 0]);
-
-    // Draw the river path
-    const riverLine = d3.line<RiverPoint>()
-      .x(d => lonScale(d.lon))
-      .y(d => latScale(d.lat))
-      .curve(d3.curveCatmullRom);
-
-    // Draw the base river
-    svg.append('path')
-      .datum(riverPath)
-      .attr('d', riverLine)
-      .attr('fill', 'none')
-      .attr('stroke', '#0099ff')
-      .attr('stroke-width', 8)
-      .attr('opacity', 0.5);
-
-    // Draw the polluted segments with color based on density
-    const pollutedPath = results.pollutionData
-      .filter((d: any) => d.density > 0)
-      .map((d: any) => d.point);
-
-    if (pollutedPath.length > 0) {
-      // Draw colored segments
-      for (let i = 0; i < pollutedPath.length - 1; i++) {
-        const startPoint = pollutedPath[i];
-        const endPoint = pollutedPath[i + 1];
-        const density = results.pollutionData.find((d: any) => d.point.id === startPoint.id)?.density || 0;
-        
-        svg.append('line')
-          .attr('x1', lonScale(startPoint.lon))
-          .attr('y1', latScale(startPoint.lat))
-          .attr('x2', lonScale(endPoint.lon))
-          .attr('y2', latScale(endPoint.lat))
-          .attr('stroke', colorScale(density))
-          .attr('stroke-width', 6)
-          .attr('opacity', 0.8);
-      }
-    }
-
-    // Add location markers for all points
-    svg.selectAll('.location-marker')
-      .data(riverPath)
-      .enter()
-      .append('circle')
-      .attr('class', 'location-marker')
-      .attr('cx', d => lonScale(d.lon))
-      .attr('cy', d => latScale(d.lat))
-      .attr('r', 5)
-      .attr('fill', d => d.id === selectedLocation ? 'red' : '#333')
-      .attr('stroke', '#fff')
-      .attr('stroke-width', 1.5);
-
-    // Highlight source and threshold points
-    svg.append('circle')
-      .attr('cx', lonScale(results.sourcePoint.lon))
-      .attr('cy', latScale(results.sourcePoint.lat))
-      .attr('r', 8)
-      .attr('fill', 'red')
-      .attr('stroke', '#fff')
-      .attr('stroke-width', 2);
-      
-    svg.append('circle')
-      .attr('cx', lonScale(results.thresholdPoint.lon))
-      .attr('cy', latScale(results.thresholdPoint.lat))
-      .attr('r', 8)
-      .attr('fill', 'green')
-      .attr('stroke', '#fff')
-      .attr('stroke-width', 2);
-
-    // Add location labels (show only a few to avoid clutter)
-    const labelPoints = [0, 2, 5, 8, 10]; // Indices of points to label
-    
-    svg.selectAll('.location-label')
-      .data(labelPoints.map(i => riverPath[i]))
-      .enter()
-      .append('text')
-      .attr('class', 'location-label')
-      .attr('x', d => lonScale(d.lon))
-      .attr('y', d => latScale(d.lat) - 10)
-      .attr('text-anchor', 'middle')
-      .attr('font-size', 12)
-      .attr('font-weight', d => d.id === selectedLocation ? 'bold' : 'normal')
-      .attr('fill', '#333')
-      .text(d => d.name);
-
-    // Add a legend for pollution density
-    const legendWidth = 200;
-    const legendHeight = 20;
-    const legendX = width - margin.right - legendWidth;
-    const legendY = height - margin.bottom + 30;
-    
-    // Create gradient for legend
-    const defs = svg.append('defs');
-    const gradient = defs.append('linearGradient')
-      .attr('id', 'density-gradient')
-      .attr('x1', '0%')
-      .attr('x2', '100%')
-      .attr('y1', '0%')
-      .attr('y2', '0%');
-      
-    // Set the color stops for the gradient
-    const numStops = 10;
-    for (let i = 0; i <= numStops; i++) {
-      gradient.append('stop')
-        .attr('offset', `${i * 100 / numStops}%`)
-        .attr('stop-color', colorScale(i * (d3.max(results.pollutionData.map((d: any) => d.density)) || 0) / numStops));
-    }
-    
-    // Draw the legend bar
-    svg.append('rect')
-      .attr('x', legendX)
-      .attr('y', legendY)
-      .attr('width', legendWidth)
-      .attr('height', legendHeight)
-      .style('fill', 'url(#density-gradient)');
-      
-    // Add legend title
-    svg.append('text')
-      .attr('x', legendX + legendWidth / 2)
-      .attr('y', legendY - 5)
-      .attr('text-anchor', 'middle')
-      .attr('font-size', 12)
-      .text('Pollution Density');
-      
-    // Add legend labels
-    svg.append('text')
-      .attr('x', legendX)
-      .attr('y', legendY + legendHeight + 15)
-      .attr('text-anchor', 'start')
-      .attr('font-size', 10)
-      .text('High');
-      
-    svg.append('text')
-      .attr('x', legendX + legendWidth)
-      .attr('y', legendY + legendHeight + 15)
-      .attr('text-anchor', 'end')
-      .attr('font-size', 10)
-      .text('Low');
-      
-    // Add a north arrow
-    const arrowX = margin.left + 30;
-    const arrowY = margin.top + 30;
-    
-    svg.append('circle')
-      .attr('cx', arrowX)
-      .attr('cy', arrowY)
-      .attr('r', 15)
-      .attr('fill', 'white')
-      .attr('stroke', '#333')
-      .attr('stroke-width', 1);
-      
-    svg.append('line')
-      .attr('x1', arrowX)
-      .attr('y1', arrowY + 10)
-      .attr('x2', arrowX)
-      .attr('y2', arrowY - 10)
-      .attr('stroke', '#333')
-      .attr('stroke-width', 2);
-      
-    svg.append('path')
-      .attr('d', `M${arrowX - 5},${arrowY - 5} L${arrowX},${arrowY - 10} L${arrowX + 5},${arrowY - 5}`)
-      .attr('fill', '#333');
-      
-    svg.append('text')
-      .attr('x', arrowX)
-      .attr('y', arrowY + 5)
-      .attr('text-anchor', 'middle')
-      .attr('font-size', 10)
-      .attr('font-weight', 'bold')
-      .text('N');
-  }, [results, mapRef]);
+  // Helper function to get color based on pollution density
+  const getPollutionColor = (density: number, maxDensity: number): string => {
+    const ratio = density / maxDensity;
+    if (ratio > 0.8) return '#8B0000'; // Dark red
+    if (ratio > 0.6) return '#FF0000'; // Red
+    if (ratio > 0.4) return '#FF4500'; // Orange red
+    if (ratio > 0.2) return '#FFA500'; // Orange
+    if (ratio > 0.1) return '#FFFF00'; // Yellow
+    return '#90EE90'; // Light green
+  };
 
   // Draw the data visualization charts
   useEffect(() => {
@@ -1185,12 +1000,152 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
                       </TabsTrigger>
                     </TabsList>
                     <TabsContent value="map" className="space-y-4">
-                      <div className="flex justify-center">
-                        <div className="w-full overflow-x-auto">
-                          <svg ref={mapRef} width={800} height={400}></svg>
+                      <div className="w-full h-[500px] border rounded-lg overflow-hidden">
+                        <MapContainer
+                          center={[3.3315, 101.2750]}
+                          zoom={11}
+                          style={{ height: '100%', width: '100%' }}
+                          className="z-0"
+                        >
+                          <TileLayer
+                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          />
+                          
+                          {/* River path polyline */}
+                          <Polyline
+                            positions={riverPath.map(point => [point.lat, point.lon])}
+                            color="#0066cc"
+                            weight={4}
+                            opacity={0.7}
+                          />
+                          
+                          {/* Pollution visualization */}
+                          {results && results.pollutionData.map((data: any, index: number) => {
+                            if (data.density <= 0) return null;
+                            
+                            const maxDensity = Math.max(...results.pollutionData.map((d: any) => d.density));
+                            const radius = Math.max(5, (data.density / maxDensity) * 20);
+                            const color = getPollutionColor(data.density, maxDensity);
+                            
+                            return (
+                              <CircleMarker
+                                key={`pollution-${index}`}
+                                center={[data.point.lat, data.point.lon]}
+                                radius={radius}
+                                fillColor={color}
+                                color={color}
+                                weight={2}
+                                opacity={0.8}
+                                fillOpacity={0.6}
+                              >
+                                <Popup>
+                                  <div className="text-sm">
+                                    <h4 className="font-semibold">{data.point.name}</h4>
+                                    <p>Pollution Density: {data.density.toFixed(2)}</p>
+                                    <p>Distance from Source: {(data.distance - results.distances[sourceIndex]).toFixed(2)} km</p>
+                                    <p>Travel Time: {data.time.toFixed(2)} hours</p>
+                                    <p>Water Quality Impact: {data.waterQualityImpact}</p>
+                                    <p>Dissolved Oxygen: {data.dissolvedOxygen.toFixed(1)} mg/L</p>
+                                    <p>pH: {data.pH.toFixed(1)}</p>
+                                    <p>Turbidity: {data.turbidity.toFixed(1)} NTU</p>
+                                  </div>
+                                </Popup>
+                              </CircleMarker>
+                            );
+                          })}
+                          
+                          {/* River point markers */}
+                          {riverPath.map((point, index) => (
+                            <CircleMarker
+                              key={`point-${point.id}`}
+                              center={[point.lat, point.lon]}
+                              radius={point.id === selectedLocation ? 8 : 5}
+                              fillColor={point.id === selectedLocation ? '#ff0000' : '#333333'}
+                              color="#ffffff"
+                              weight={2}
+                              opacity={1}
+                              fillOpacity={0.8}
+                            >
+                              <Popup>
+                                <div className="text-sm">
+                                  <h4 className="font-semibold">{point.name}</h4>
+                                  <p>{point.description}</p>
+                                  <p>Width: {point.characteristics.width}m</p>
+                                  <p>Depth: {point.characteristics.depth}m</p>
+                                  <p>DO: {point.characteristics.dissolved_oxygen} mg/L</p>
+                                  <p>pH: {point.characteristics.pH}</p>
+                                </div>
+                              </Popup>
+                            </CircleMarker>
+                          ))}
+                          
+                          {/* Source and threshold point highlights */}
+                          {results && (
+                            <>
+                              <CircleMarker
+                                center={[results.sourcePoint.lat, results.sourcePoint.lon]}
+                                radius={12}
+                                fillColor="#ff0000"
+                                color="#ffffff"
+                                weight={3}
+                                opacity={1}
+                                fillOpacity={0.9}
+                              >
+                                <Popup>
+                                  <div className="text-sm">
+                                    <h4 className="font-semibold text-red-600">Pollution Source</h4>
+                                    <p>{results.sourcePoint.name}</p>
+                                  </div>
+                                </Popup>
+                              </CircleMarker>
+                              
+                              <CircleMarker
+                                center={[results.thresholdPoint.lat, results.thresholdPoint.lon]}
+                                radius={10}
+                                fillColor="#00ff00"
+                                color="#ffffff"
+                                weight={3}
+                                opacity={1}
+                                fillOpacity={0.9}
+                              >
+                                <Popup>
+                                  <div className="text-sm">
+                                    <h4 className="font-semibold text-green-600">Threshold Point</h4>
+                                    <p>{results.thresholdPoint.name}</p>
+                                    <p>Pollution below 10% of initial</p>
+                                  </div>
+                                </Popup>
+                              </CircleMarker>
+                            </>
+                          )}
+                        </MapContainer>
+                      </div>
+                      
+                      {/* Map legend */}
+                      <div className="bg-white p-4 border rounded-lg">
+                        <h4 className="font-semibold mb-2">Map Legend</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 bg-blue-600 rounded"></div>
+                            <span>River Path</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 bg-red-600 rounded-full"></div>
+                            <span>Pollution Source</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 bg-green-500 rounded-full"></div>
+                            <span>Threshold Point</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 bg-gradient-to-r from-red-600 to-green-300 rounded-full"></div>
+                            <span>Pollution Intensity</span>
+                          </div>
                         </div>
                       </div>
                     </TabsContent>
+                    
                     <TabsContent value="chart" className="space-y-4">
                       <div className="flex justify-center mb-4">
                         <div className="inline-flex rounded-md shadow-sm">
