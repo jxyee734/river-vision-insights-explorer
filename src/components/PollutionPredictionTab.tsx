@@ -1,13 +1,13 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import * as d3 from 'd3';
-import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AreaChart, BarChart, LineChart } from 'lucide-react';
+import { AreaChart, LineChart } from 'lucide-react';
 import RiverMap from './RiverMap';
+import EnvironmentalControls from './EnvironmentalControls';
+import PollutionChart from './PollutionChart';
 
 // Define advanced types for river path points
 interface RiverCharacteristics {
@@ -374,7 +374,6 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
   const [precipitation, setPrecipitation] = useState<number>(10);
   const [results, setResults] = useState<PollutionResults | null>(null);
   const [viewMode, setViewMode] = useState<string>("density");
-  const svgRef = useRef<SVGSVGElement>(null);
 
   const sourceIndex = riverPath.findIndex(point => point.id === selectedLocation);
 
@@ -602,183 +601,6 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
     calculatePollutionSpread();
   }, [sourceIndex, selectedPollutant, flowVelocity, windSpeed, windDirection, initialDensity, trappingRate, temperature, precipitation]);
 
-  // Draw the data visualization charts
-  useEffect(() => {
-    if (!results || !svgRef.current) return;
-
-    const width = 800;
-    const height = 400;
-    const margin = { top: 20, right: 30, bottom: 40, left: 50 };
-
-    const svg = d3.select(svgRef.current);
-    svg.selectAll('*').remove();
-
-    // Select data series based on view mode
-    let dataKey = 'density';
-    let yAxisLabel = 'Pollution Density';
-    let lineColor = 'steelblue';
-    
-    if (viewMode === 'oxygen') {
-      dataKey = 'dissolvedOxygen';
-      yAxisLabel = 'Dissolved Oxygen (mg/L)';
-      lineColor = '#00cc66';
-    } else if (viewMode === 'ph') {
-      dataKey = 'pH';
-      yAxisLabel = 'pH Level';
-      lineColor = '#9933cc';
-    } else if (viewMode === 'turbidity') {
-      dataKey = 'turbidity';
-      yAxisLabel = 'Turbidity (NTU)';
-      lineColor = '#ff9900';
-    } else if (viewMode === 'time') {
-      dataKey = 'time';
-      yAxisLabel = 'Travel Time (hours)';
-      lineColor = '#ff3333';
-    }
-
-    // Prepare data series that corresponds to polluted segments only
-    const chartData = results.pollutionData.filter((d: any) => d.distance >= results.distances[sourceIndex]);
-
-    // Create scales
-    const xScale = d3.scaleLinear()
-      .domain([0, d3.max(chartData.map((d: any) => d.distance - results.distances[sourceIndex])) || 0])
-      .range([margin.left, width - margin.right]);
-
-    const yScale = d3.scaleLinear()
-      .domain([0, d3.max(chartData.map((d: any) => d[dataKey])) || 0])
-      .range([height - margin.bottom, margin.top]);
-
-    // Create line generator
-    const line = d3.line()
-      .x((d: any) => xScale(d.distance - results.distances[sourceIndex]))
-      .y((d: any) => yScale(d[dataKey]))
-      .curve(d3.curveMonotoneX);
-
-    // Add axes
-    svg
-      .append('g')
-      .attr('transform', `translate(0,${height - margin.bottom})`)
-      .call(d3.axisBottom(xScale))
-      .append('text')
-      .attr('x', width - margin.right)
-      .attr('y', -10)
-      .attr('fill', 'black')
-      .text('Distance from Source (km)');
-
-    svg
-      .append('g')
-      .attr('transform', `translate(${margin.left},0)`)
-      .call(d3.axisLeft(yScale))
-      .append('text')
-      .attr('transform', 'rotate(-90)')
-      .attr('y', 15)
-      .attr('x', -margin.top - 100)
-      .attr('fill', 'black')
-      .text(yAxisLabel);
-
-    // Draw line path
-    svg
-      .append('path')
-      .datum(chartData)
-      .attr('fill', 'none')
-      .attr('stroke', lineColor)
-      .attr('stroke-width', 2)
-      .attr('d', line as any);
-
-    // Add area under the curve for density graph
-    if (viewMode === 'density') {
-      const area = d3.area()
-        .x((d: any) => xScale(d.distance - results.distances[sourceIndex]))
-        .y0(height - margin.bottom)
-        .y1((d: any) => yScale(d.density))
-        .curve(d3.curveMonotoneX);
-
-      svg
-        .append('path')
-        .datum(chartData)
-        .attr('fill', 'steelblue')
-        .attr('fill-opacity', 0.2)
-        .attr('d', area as any);
-    }
-
-    // Add dots for data points
-    svg
-      .selectAll('circle')
-      .data(chartData)
-      .enter()
-      .append('circle')
-      .attr('cx', (d: any) => xScale(d.distance - results.distances[sourceIndex]))
-      .attr('cy', (d: any) => yScale(d[dataKey]))
-      .attr('r', 3)
-      .attr('fill', lineColor);
-
-    // Add threshold line for density view
-    if (viewMode === 'density') {
-      const thresholdValue = results.pollutionData[sourceIndex].density * 0.1;
-      
-      svg
-        .append('line')
-        .attr('x1', margin.left)
-        .attr('y1', yScale(thresholdValue))
-        .attr('x2', width - margin.right)
-        .attr('y2', yScale(thresholdValue))
-        .attr('stroke', 'red')
-        .attr('stroke-width', 1.5)
-        .attr('stroke-dasharray', '5,5');
-        
-      svg
-        .append('text')
-        .attr('x', margin.left + 10)
-        .attr('y', yScale(thresholdValue) - 5)
-        .attr('fill', 'red')
-        .attr('font-size', 12)
-        .text('Threshold (10%)');
-    }
-
-    // Add markers for source and threshold points
-    svg
-      .append('circle')
-      .attr('cx', xScale(0))
-      .attr('cy', yScale(chartData[0][dataKey]))
-      .attr('r', 5)
-      .attr('fill', 'red');
-
-    const thresholdIndex = results.pollutedSegment.length - 1;
-    const thresholdDistance = 
-      results.pollutionData.find((d: any) => d.point.id === results.thresholdPoint.id)?.distance - 
-      results.distances[sourceIndex];
-      
-    if (thresholdDistance) {
-      const thresholdY = results.pollutionData.find((d: any) => d.point.id === results.thresholdPoint.id)?.[dataKey] || 0;
-      
-      svg
-        .append('circle')
-        .attr('cx', xScale(thresholdDistance))
-        .attr('cy', yScale(thresholdY))
-        .attr('r', 5)
-        .attr('fill', 'green');
-    }
-
-    // Add tooltips for important points
-    const tooltipData = [
-      { label: 'Source', x: 0, y: chartData[0][dataKey], color: 'red' },
-      { label: 'Threshold Point', x: thresholdDistance || 0, 
-        y: results.pollutionData.find((d: any) => d.point.id === results.thresholdPoint.id)?.[dataKey] || 0, 
-        color: 'green' }
-    ];
-
-    tooltipData.forEach(point => {
-      svg
-        .append('text')
-        .attr('x', xScale(point.x))
-        .attr('y', yScale(point.y) - 15)
-        .attr('text-anchor', 'middle')
-        .attr('font-size', 12)
-        .attr('fill', point.color)
-        .text(point.label);
-    });
-  }, [results, viewMode, sourceIndex]);
-
   return (
     <div className="space-y-6">
       <Card className="w-full">
@@ -841,90 +663,22 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="flow-velocity">Flow Velocity ({flowVelocity.toFixed(1)} m/s)</Label>
-                <Slider
-                  id="flow-velocity"
-                  min={0.1}
-                  max={2.0}
-                  step={0.1}
-                  value={[flowVelocity]}
-                  onValueChange={(value) => setFlowVelocity(value[0])}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="initial-density">Initial Pollution Density ({initialDensity.toFixed(0)} units)</Label>
-                <Slider
-                  id="initial-density"
-                  min={100}
-                  max={5000}
-                  step={50}
-                  value={[initialDensity]}
-                  onValueChange={(value) => setInitialDensity(value[0])}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="trapping-rate">Trapping Rate ({trappingRate.toFixed(2)})</Label>
-                <Slider
-                  id="trapping-rate"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={[trappingRate]}
-                  onValueChange={(value) => setTrappingRate(value[0])}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="temperature">Water Temperature ({temperature.toFixed(1)}°C)</Label>
-                <Slider
-                  id="temperature"
-                  min={25}
-                  max={35}
-                  step={0.5}
-                  value={[temperature]}
-                  onValueChange={(value) => setTemperature(value[0])}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="wind-speed">Wind Speed ({windSpeed.toFixed(1)} m/s)</Label>
-                <Slider
-                  id="wind-speed"
-                  min={0}
-                  max={20}
-                  step={0.5}
-                  value={[windSpeed]}
-                  onValueChange={(value) => setWindSpeed(value[0])}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="wind-direction">Wind Direction ({windDirection}°)</Label>
-                <Slider
-                  id="wind-direction"
-                  min={0}
-                  max={359}
-                  step={1}
-                  value={[windDirection]}
-                  onValueChange={(value) => setWindDirection(value[0])}
-                >
-                  <div className="text-xs text-gray-500">0° = North, 90° = East, 180° = South, 270° = West</div>
-                </Slider>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="precipitation">Precipitation ({precipitation.toFixed(1)} mm/h)</Label>
-                <Slider
-                  id="precipitation"
-                  min={0}
-                  max={50}
-                  step={1}
-                  value={[precipitation]}
-                  onValueChange={(value) => setPrecipitation(value[0])}
-                />
-              </div>
-            </div>
+            <EnvironmentalControls
+              flowVelocity={flowVelocity}
+              setFlowVelocity={setFlowVelocity}
+              initialDensity={initialDensity}
+              setInitialDensity={setInitialDensity}
+              trappingRate={trappingRate}
+              setTrappingRate={setTrappingRate}
+              temperature={temperature}
+              setTemperature={setTemperature}
+              windSpeed={windSpeed}
+              setWindSpeed={setWindSpeed}
+              windDirection={windDirection}
+              setWindDirection={setWindDirection}
+              precipitation={precipitation}
+              setPrecipitation={setPrecipitation}
+            />
 
             <Button onClick={calculatePollutionSpread} className="w-full md:w-auto">
               Recalculate Prediction
@@ -1050,11 +804,7 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
                         </div>
                       </div>
                       
-                      <div className="flex justify-center">
-                        <div className="w-full overflow-x-auto">
-                          <svg ref={svgRef} width={800} height={400}></svg>
-                        </div>
-                      </div>
+                      <PollutionChart results={results} viewMode={viewMode} sourceIndex={sourceIndex} />
                     </TabsContent>
                   </Tabs>
                 </div>
