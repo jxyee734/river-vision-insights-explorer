@@ -181,7 +181,7 @@ const Index = () => {
             {showPollutionPrediction && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
                 <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full p-6 overflow-auto" style={{ maxHeight: '80vh' }}>
-                  <PollutionPredictionTab pollutionData={analysisResult?.pollutionData || null} />
+                  <PollutionPredictionTab />
                   <button
                     onClick={togglePollutionPrediction}
                     className="mt-4 w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
