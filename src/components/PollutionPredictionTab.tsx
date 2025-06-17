@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { MapContainer, TileLayer, Polyline, CircleMarker, Popup } from 'react-leaflet';
@@ -8,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AreaChart, BarChart, LineChart } from 'lucide-react';
 import L from 'leaflet';
-import * as d3 from 'd3';
 
 // Fix for default markers in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -18,17 +18,17 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// Define advanced types for river path points
+// Define types
 interface RiverCharacteristics {
-  width: number;               // meters
-  depth: number;               // meters
-  flowResistance: number;      // 0-1 scale
-  vegetation: number;          // 0-1 scale - percentage of riverbank with vegetation
-  benthicDeposition: number;   // 0-1 scale - tendency for pollutants to settle in sediment
-  dissolved_oxygen: number;    // mg/L
-  temperature: number;         // Celsius
-  pH: number;                  // pH scale
-  turbidity: number;           // NTU
+  width: number;
+  depth: number;
+  flowResistance: number;
+  vegetation: number;
+  benthicDeposition: number;
+  dissolved_oxygen: number;
+  temperature: number;
+  pH: number;
+  turbidity: number;
 }
 
 interface RiverPoint {
@@ -38,39 +38,48 @@ interface RiverPoint {
   name: string;
   description?: string;
   characteristics: RiverCharacteristics;
-  elevation?: number;          // meters above sea level
+  elevation?: number;
   pollutantSources?: {
     type: string;
-    intensity: number;         // 0-100 scale
+    intensity: number;
   }[];
-}
-
-interface WeatherConditions {
-  wind_speed: number;          // m/s
-  wind_direction: number;      // degrees (0-359, 0 = North)
-  precipitation: number;       // mm/hour
-  temperature: number;         // Celsius
-  humidity: number;            // percentage
-  cloudCover: number;          // percentage
-  solarRadiation: number;      // W/m²
 }
 
 interface PollutantProperties {
   name: string;
-  decayRate: number;           // natural decay rate (0-1 scale)
-  adsorptionRate: number;      // tendency to bind to sediment (0-1 scale)
-  diffusionCoefficient: number; // rate of diffusion in water
-  densityRelativeToWater: number; // relative to water (1 = neutrally buoyant)
-  toxicityThreshold: number;   // concentration at which ecological effects occur
-  bioaccumulation: number;     // tendency to accumulate in organisms (0-1 scale)
+  decayRate: number;
+  adsorptionRate: number;
+  diffusionCoefficient: number;
+  densityRelativeToWater: number;
+  toxicityThreshold: number;
+  bioaccumulation: number;
 }
 
-// Define the props type
+interface PollutionResults {
+  sourcePoint: RiverPoint;
+  thresholdPoint: RiverPoint;
+  pollutedSegment: RiverPoint[];
+  maxDistance: number;
+  totalTime: number;
+  finalDensity: number;
+  pollutionData: any[];
+  distances: number[];
+  environmentalImpact: number;
+  remediationTime: number;
+  affectedSpecies: number;
+  sensorReadings: {
+    location: string;
+    density: number;
+    arrivalTime: number;
+    qualityImpact: string;
+  }[];
+}
+
 interface PollutionPredictionProps {
-  pollutionData?: any; // Replace with specific type if known
+  pollutionData?: any;
 }
 
-// Enhanced river path with more detailed data
+// Simplified river path data
 const riverPath: RiverPoint[] = [
   { 
     id: "estuary",
@@ -90,28 +99,6 @@ const riverPath: RiverPoint[] = [
       pH: 7.7,
       turbidity: 35
     }
-  },
-  { 
-    id: "pasir_penambang",
-    lat: 3.3365, 
-    lon: 101.2525, 
-    name: "Pasir Penambang",
-    description: "Fishing village with seafood restaurants",
-    elevation: 1,
-    characteristics: { 
-      width: 160, 
-      depth: 9, 
-      flowResistance: 0.2, 
-      vegetation: 0.3,
-      benthicDeposition: 0.55,
-      dissolved_oxygen: 5.6,
-      temperature: 29.6,
-      pH: 7.6,
-      turbidity: 32
-    },
-    pollutantSources: [
-      { type: "food_industry", intensity: 15 }
-    ]
   },
   { 
     id: "kuala_selangor",
@@ -137,28 +124,6 @@ const riverPath: RiverPoint[] = [
     ]
   },
   { 
-    id: "tanjung_karang",
-    lat: 3.3345, 
-    lon: 101.2680, 
-    name: "Tanjung Karang",
-    description: "Agricultural area with rice paddies",
-    elevation: 5,
-    characteristics: { 
-      width: 130, 
-      depth: 7.5, 
-      flowResistance: 0.3, 
-      vegetation: 0.5,
-      benthicDeposition: 0.45,
-      dissolved_oxygen: 5.2,
-      temperature: 29.9,
-      pH: 7.4,
-      turbidity: 28
-    },
-    pollutantSources: [
-      { type: "agricultural_runoff", intensity: 45 }
-    ]
-  },
-  { 
     id: "kampung_kuantan",
     lat: 3.3330, 
     lon: 101.2750, 
@@ -176,88 +141,6 @@ const riverPath: RiverPoint[] = [
       pH: 7.3,
       turbidity: 25
     }
-  },
-  { 
-    id: "kuala_sungai_buloh",
-    lat: 3.3315, 
-    lon: 101.2850, 
-    name: "Kuala Sungai Buloh",
-    description: "Tributary confluence with mangrove areas",
-    elevation: 10,
-    characteristics: { 
-      width: 110, 
-      depth: 6.5, 
-      flowResistance: 0.4, 
-      vegetation: 0.8,
-      benthicDeposition: 0.35,
-      dissolved_oxygen: 6.2,
-      temperature: 29.3,
-      pH: 7.2,
-      turbidity: 22
-    }
-  },
-  { 
-    id: "pasangan",
-    lat: 3.3300, 
-    lon: 101.2950, 
-    name: "Pasangan",
-    description: "Small riverside community with limited infrastructure",
-    elevation: 12,
-    characteristics: { 
-      width: 100, 
-      depth: 6, 
-      flowResistance: 0.45, 
-      vegetation: 0.6,
-      benthicDeposition: 0.6,
-      dissolved_oxygen: 6.0,
-      temperature: 29.4,
-      pH: 7.2,
-      turbidity: 20
-    },
-    pollutantSources: [
-      { type: "domestic_waste", intensity: 15 }
-    ]
-  },
-  { 
-    id: "bukit_rotan",
-    lat: 3.3285, 
-    lon: 101.3020, 
-    name: "Bukit Rotan",
-    description: "Upstream area with natural surroundings",
-    elevation: 15,
-    characteristics: { 
-      width: 90, 
-      depth: 5.5, 
-      flowResistance: 0.5, 
-      vegetation: 0.7,
-      benthicDeposition: 0.25,
-      dissolved_oxygen: 6.5,
-      temperature: 29.2,
-      pH: 7.1,
-      turbidity: 18
-    }
-  },
-  { 
-    id: "ijok",
-    lat: 3.3270, 
-    lon: 101.3100, 
-    name: "Ijok",
-    description: "Rural settlement with small-scale industry",
-    elevation: 18,
-    characteristics: { 
-      width: 80, 
-      depth: 5, 
-      flowResistance: 0.55, 
-      vegetation: 0.6,
-      benthicDeposition: 0.2,
-      dissolved_oxygen: 6.3,
-      temperature: 29.1,
-      pH: 7.0,
-      turbidity: 15
-    },
-    pollutantSources: [
-      { type: "light_industry", intensity: 25 }
-    ]
   },
   { 
     id: "bestari_jaya",
@@ -280,29 +163,10 @@ const riverPath: RiverPoint[] = [
     pollutantSources: [
       { type: "urban_runoff", intensity: 20 }
     ]
-  },
-  { 
-    id: "kuala_sg_selangor",
-    lat: 3.3240, 
-    lon: 101.3300, 
-    name: "Kuala Sg. Selangor Dam Vicinity",
-    description: "Area near the dam with regulated water flow",
-    elevation: 25,
-    characteristics: { 
-      width: 60, 
-      depth: 4, 
-      flowResistance: 0.65, 
-      vegetation: 0.6,
-      benthicDeposition: 0.1,
-      dissolved_oxygen: 6.8,
-      temperature: 28.5,
-      pH: 6.8,
-      turbidity: 10
-    }
   }
 ];
 
-// Define different types of pollutants
+// Define pollutant types
 const pollutantTypes: Record<string, PollutantProperties> = {
   oil: {
     name: "Oil Pollutants",
@@ -322,24 +186,6 @@ const pollutantTypes: Record<string, PollutantProperties> = {
     toxicityThreshold: 0.3,
     bioaccumulation: 0.8
   },
-  sediment: {
-    name: "Sediment",
-    decayRate: 0.01,
-    adsorptionRate: 0.9,
-    diffusionCoefficient: 0.1,
-    densityRelativeToWater: 1.5,
-    toxicityThreshold: 0.8,
-    bioaccumulation: 0.1
-  },
-  nutrients: {
-    name: "Nutrients (N, P)",
-    decayRate: 0.06,
-    adsorptionRate: 0.4,
-    diffusionCoefficient: 0.6,
-    densityRelativeToWater: 1.0,
-    toxicityThreshold: 0.4,
-    bioaccumulation: 0.5
-  },
   plastic: {
     name: "Plastic Waste",
     decayRate: 0.001,
@@ -351,39 +197,13 @@ const pollutantTypes: Record<string, PollutantProperties> = {
   }
 };
 
-interface PollutionResults {
-  sourcePoint: RiverPoint;
-  thresholdPoint: RiverPoint;
-  pollutedSegment: RiverPoint[];
-  maxDistance: number;
-  totalTime: number;
-  finalDensity: number;
-  pollutionData: any[];
-  distances: number[];
-  environmentalImpact: number;
-  remediationTime: number;
-  affectedSpecies: number;
-  sensorReadings: {
-    location: string;
-    density: number;
-    arrivalTime: number;
-    qualityImpact: string;
-  }[];
-}
-
 const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionData }) => {
   const [selectedLocation, setSelectedLocation] = useState<string>("estuary");
   const [selectedPollutant, setSelectedPollutant] = useState<string>("chemical");
   const [flowVelocity, setFlowVelocity] = useState<number>(0.5);
-  const [windSpeed, setWindSpeed] = useState<number>(5);
-  const [windDirection, setWindDirection] = useState<number>(180);
   const [initialDensity, setInitialDensity] = useState<number>(1500);
   const [trappingRate, setTrappingRate] = useState<number>(0.2);
-  const [temperature, setTemperature] = useState<number>(29);
-  const [precipitation, setPrecipitation] = useState<number>(10);
   const [results, setResults] = useState<PollutionResults | null>(null);
-  const [viewMode, setViewMode] = useState<string>("density");
-  const svgRef = React.useRef<SVGSVGElement>(null);
 
   const sourceIndex = riverPath.findIndex(point => point.id === selectedLocation);
 
@@ -402,8 +222,9 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
     return R * c; // Distance in km
   }
 
-  // Enhanced pollution spread calculation with advanced hydrodynamic modeling
   function calculatePollutionSpread() {
+    console.log('Calculating pollution spread...');
+    
     // Calculate distances between river points
     const distances: number[] = [0];
     for (let i = 1; i < riverPath.length; i++) {
@@ -413,39 +234,9 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
 
     // Get pollutant properties
     const pollutant = pollutantTypes[selectedPollutant];
-    
-    // Weather and environmental conditions
-    const weather: WeatherConditions = { 
-      wind_speed: windSpeed, 
-      wind_direction: windDirection,
-      precipitation: precipitation, 
-      temperature: temperature,
-      humidity: 70, 
-      cloudCover: 30,
-      solarRadiation: (100 - 30) * 10 // Simplified calculation based on cloud cover
-    };
-    
-    // Calculate environmental modifiers
-    const windFactor = 1 + (0.05 * weather.wind_speed * 
-      Math.abs(Math.cos(((weather.wind_direction - 180) % 360) * Math.PI / 180))); // Wind along/against flow direction
-    const precipitationFactor = 1 - (weather.precipitation * 0.02); // Precipitation reduces pollution density
-    const temperatureFactor = 1 + ((weather.temperature - 25) * 0.01); // Higher temperatures increase reaction rates
-    const radiationFactor = 1 - (weather.solarRadiation * 0.0001 * pollutant.decayRate); // Solar radiation aids in photodegradation
-    
-    const sourceCharacteristics = riverPath[sourceIndex].characteristics;
-    
-    // Calculate effective velocity considering all factors
-    const baseVelocity = flowVelocity * (1 - sourceCharacteristics.flowResistance);
-    const effectiveVelocity = baseVelocity * windFactor * precipitationFactor;
-    
-    // Define threshold density as 10% of initial
     const thresholdDensity = initialDensity * 0.1;
     const pollutionData: any[] = [];
     let thresholdIndex: number | null = null;
-    
-    // Sensor locations for monitoring - using a subset of river points
-    const sensorLocations = [0, 2, 5, 8, riverPath.length - 1]; // Indices of monitoring stations
-    const sensorReadings: { location: string; density: number; arrivalTime: number; qualityImpact: string }[] = [];
 
     for (let i = 0; i < riverPath.length; i++) {
       let density = 0;
@@ -453,81 +244,19 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
       let waterQualityImpact = "None";
 
       if (i >= sourceIndex) {
-        // Distance from source in km
         const distanceKm = distances[i] - distances[sourceIndex];
         
-        // Calculate time to reach this point considering variable velocity
-        // For more accuracy, we calculate segment by segment
-        let cumulativeTime = 0;
-        let prevIndex = sourceIndex;
+        // Simple time calculation
+        timeHours = distanceKm / flowVelocity;
         
-        for (let j = sourceIndex + 1; j <= i; j++) {
-          const segmentDistance = distances[j] - distances[j - 1];
-          const upstreamCharacteristics = riverPath[j - 1].characteristics;
-          const downstreamCharacteristics = riverPath[j].characteristics;
-          
-          // Average characteristics for the segment
-          const avgWidth = (upstreamCharacteristics.width + downstreamCharacteristics.width) / 2;
-          const avgDepth = (upstreamCharacteristics.depth + downstreamCharacteristics.depth) / 2;
-          const avgResistance = (upstreamCharacteristics.flowResistance + downstreamCharacteristics.flowResistance) / 2;
-          
-          // Adjust velocity for this specific segment
-          const elevationChange = (riverPath[j].elevation || 0) - (riverPath[j-1].elevation || 0);
-          const elevationFactor = 1 + (elevationChange * 0.01); // Steeper segments increase velocity
-          
-          const segmentVelocity = baseVelocity * (1 - avgResistance) * elevationFactor * windFactor;
-          const segmentTimeHours = (segmentDistance * 1000) / (segmentVelocity * 3600);
-          
-          cumulativeTime += segmentTimeHours;
-        }
+        // Simple dilution calculation
+        const dilutionFactor = Math.exp(-0.1 * distanceKm);
+        const trappingFactor = Math.exp(-trappingRate * distanceKm);
+        const decayFactor = Math.exp(-pollutant.decayRate * timeHours);
         
-        timeHours = cumulativeTime;
+        density = initialDensity * dilutionFactor * trappingFactor * decayFactor;
         
-        // Current point characteristics
-        const currentCharacteristics = riverPath[i].characteristics;
-        
-        // Calculate dilution factor with more sophisticated approach
-        // Consider cross-sectional area changes, river morphology, and mixing zones
-        const crossSectionalAreaRatio = (sourceCharacteristics.width * sourceCharacteristics.depth) / 
-                                       (currentCharacteristics.width * currentCharacteristics.depth);
-        
-        // Enhanced dilution model including river characteristics and distance
-        const dilutionBase = crossSectionalAreaRatio * Math.exp(-0.1 * distanceKm);
-        
-        // Adjust for temperature effects on diffusion
-        const temperatureDiffusionFactor = 1 + ((weather.temperature - 25) * 0.02 * pollutant.diffusionCoefficient);
-        
-        // Adjust for turbulence in the flow
-        const turbulenceFactor = 1 + (0.05 * (1 - currentCharacteristics.flowResistance));
-        
-        // Combined dilution factor
-        const dilutionFactor = dilutionBase * temperatureDiffusionFactor * turbulenceFactor;
-        
-        // Calculate trapping/retention in the riverbed and vegetation
-        // Affected by pollutant properties, river characteristics, and flow conditions
-        const vegetationTrapping = currentCharacteristics.vegetation * pollutant.adsorptionRate * 0.2;
-        const sedimentTrapping = currentCharacteristics.benthicDeposition * pollutant.adsorptionRate * 0.3;
-        const bankTrapping = trappingRate * 0.5;
-        
-        // Calculate density-dependent settling for the pollutant
-        const densitySettling = Math.max(0, (pollutant.densityRelativeToWater - 1) * 0.1);
-        
-        // Combined trapping factor
-        const combinedTrappingRate = vegetationTrapping + sedimentTrapping + bankTrapping + densitySettling;
-        
-        // Natural decay of pollutant over time (biodegradation, chemical breakdown)
-        const naturalDecay = pollutant.decayRate * timeHours * temperatureFactor * radiationFactor;
-        
-        // Calculate trapping factor
-        const trappingFactor = Math.exp(-combinedTrappingRate * distanceKm);
-        
-        // Calculate decay factor
-        const decayFactor = Math.exp(-naturalDecay);
-        
-        // Compute final density at this point
-        density = initialDensity * dilutionFactor * trappingFactor * decayFactor * precipitationFactor;
-        
-        // Determine water quality impact based on density relative to toxicity threshold
+        // Determine water quality impact
         const relativeImpact = density / (pollutant.toxicityThreshold * 1500);
         if (relativeImpact < 0.2) waterQualityImpact = "Minimal";
         else if (relativeImpact < 0.5) waterQualityImpact = "Low";
@@ -535,62 +264,33 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
         else if (relativeImpact < 2.0) waterQualityImpact = "High";
         else waterQualityImpact = "Severe";
         
-        // Record when we first cross below threshold
         if (density <= thresholdDensity && thresholdIndex === null && i > sourceIndex) {
           thresholdIndex = i;
         }
-        
-        // Record data for sensor locations
-        if (sensorLocations.includes(i)) {
-          sensorReadings.push({
-            location: riverPath[i].name,
-            density: Math.max(density, 0),
-            arrivalTime: timeHours,
-            qualityImpact: waterQualityImpact
-          });
-        }
       }
 
-      // Store comprehensive data for each point
       pollutionData.push({
         point: riverPath[i],
         density: Math.max(density, 0),
         distance: distances[i],
         time: timeHours,
-        waterQualityImpact: waterQualityImpact,
-        dissolvedOxygen: i >= sourceIndex ? 
-          Math.max(0, riverPath[i].characteristics.dissolved_oxygen - (density/initialDensity * 2)) : 
-          riverPath[i].characteristics.dissolved_oxygen,
-        pH: i >= sourceIndex ? 
-          riverPath[i].characteristics.pH - (density/initialDensity * 0.5) : 
-          riverPath[i].characteristics.pH,
-        turbidity: i >= sourceIndex ? 
-          riverPath[i].characteristics.turbidity + (density/initialDensity * 15) : 
-          riverPath[i].characteristics.turbidity
+        waterQualityImpact: waterQualityImpact
       });
     }
 
-    // If threshold never reached, set to last point
     if (thresholdIndex === null) {
       thresholdIndex = riverPath.length - 1;
     }
     
-    // Calculate environmental impact metrics
     const environmentalImpact = (pollutionData[pollutionData.length - 1].density / initialDensity) * 
-                               10 * pollutant.bioaccumulation * 
-                               (1 - Math.min(1, (riverPath[riverPath.length - 1].characteristics.dissolved_oxygen / 8)));
+                               10 * pollutant.bioaccumulation;
     
-    // Estimate remediation time - dependent on pollutant type and environmental conditions
     const remediationTime = pollutionData[thresholdIndex].time * 
-                           (3 + 5 * (1 - pollutant.decayRate)) * 
-                           (1 + 0.5 * pollutant.bioaccumulation);
+                           (3 + 5 * (1 - pollutant.decayRate));
     
-    // Estimate affected species based on river health metrics and toxicity
-    const baseSpeciesCount = 15; // Baseline number of significant species
-    const affectedSpecies = Math.round(baseSpeciesCount * 
+    const affectedSpecies = Math.round(15 * 
                            Math.min(1, (environmentalImpact * pollutant.toxicityThreshold) / 5));
     
-    // Set complete results
     setResults({
       sourcePoint: riverPath[sourceIndex],
       thresholdPoint: riverPath[thresholdIndex],
@@ -603,209 +303,34 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
       environmentalImpact: environmentalImpact,
       remediationTime: remediationTime,
       affectedSpecies: affectedSpecies,
-      sensorReadings: sensorReadings
+      sensorReadings: []
     });
   }
 
   useEffect(() => {
+    console.log('useEffect triggered, calculating pollution spread');
     calculatePollutionSpread();
-  }, [sourceIndex, selectedPollutant, flowVelocity, windSpeed, windDirection, initialDensity, trappingRate, temperature, precipitation]);
+  }, [sourceIndex, selectedPollutant, flowVelocity, initialDensity, trappingRate]);
 
-  // Helper function to get color based on pollution density
   const getPollutionColor = (density: number, maxDensity: number): string => {
     const ratio = density / maxDensity;
-    if (ratio > 0.8) return '#8B0000'; // Dark red
-    if (ratio > 0.6) return '#FF0000'; // Red
-    if (ratio > 0.4) return '#FF4500'; // Orange red
-    if (ratio > 0.2) return '#FFA500'; // Orange
-    if (ratio > 0.1) return '#FFFF00'; // Yellow
-    return '#90EE90'; // Light green
+    if (ratio > 0.8) return '#8B0000';
+    if (ratio > 0.6) return '#FF0000';
+    if (ratio > 0.4) return '#FF4500';
+    if (ratio > 0.2) return '#FFA500';
+    if (ratio > 0.1) return '#FFFF00';
+    return '#90EE90';
   };
 
-  // Draw the data visualization charts
-  useEffect(() => {
-    if (!results || !svgRef.current) return;
-
-    const width = 800;
-    const height = 400;
-    const margin = { top: 20, right: 30, bottom: 40, left: 50 };
-
-    const svg = d3.select(svgRef.current);
-    svg.selectAll('*').remove();
-
-    // Select data series based on view mode
-    let dataKey = 'density';
-    let yAxisLabel = 'Pollution Density';
-    let lineColor = 'steelblue';
-    
-    if (viewMode === 'oxygen') {
-      dataKey = 'dissolvedOxygen';
-      yAxisLabel = 'Dissolved Oxygen (mg/L)';
-      lineColor = '#00cc66';
-    } else if (viewMode === 'ph') {
-      dataKey = 'pH';
-      yAxisLabel = 'pH Level';
-      lineColor = '#9933cc';
-    } else if (viewMode === 'turbidity') {
-      dataKey = 'turbidity';
-      yAxisLabel = 'Turbidity (NTU)';
-      lineColor = '#ff9900';
-    } else if (viewMode === 'time') {
-      dataKey = 'time';
-      yAxisLabel = 'Travel Time (hours)';
-      lineColor = '#ff3333';
-    }
-
-    // Prepare data series that corresponds to polluted segments only
-    const chartData = results.pollutionData.filter((d: any) => d.distance >= results.distances[sourceIndex]);
-
-    // Create scales
-    const xScale = d3.scaleLinear()
-      .domain([0, d3.max(chartData.map((d: any) => d.distance - results.distances[sourceIndex])) || 0])
-      .range([margin.left, width - margin.right]);
-
-    const yScale = d3.scaleLinear()
-      .domain([0, d3.max(chartData.map((d: any) => d[dataKey])) || 0])
-      .range([height - margin.bottom, margin.top]);
-
-    // Create line generator
-    const line = d3.line()
-      .x((d: any) => xScale(d.distance - results.distances[sourceIndex]))
-      .y((d: any) => yScale(d[dataKey]))
-      .curve(d3.curveMonotoneX);
-
-    // Add axes
-    svg
-      .append('g')
-      .attr('transform', `translate(0,${height - margin.bottom})`)
-      .call(d3.axisBottom(xScale))
-      .append('text')
-      .attr('x', width - margin.right)
-      .attr('y', -10)
-      .attr('fill', 'black')
-      .text('Distance from Source (km)');
-
-    svg
-      .append('g')
-      .attr('transform', `translate(${margin.left},0)`)
-      .call(d3.axisLeft(yScale))
-      .append('text')
-      .attr('transform', 'rotate(-90)')
-      .attr('y', 15)
-      .attr('x', -margin.top - 100)
-      .attr('fill', 'black')
-      .text(yAxisLabel);
-
-    // Draw line path
-    svg
-      .append('path')
-      .datum(chartData)
-      .attr('fill', 'none')
-      .attr('stroke', lineColor)
-      .attr('stroke-width', 2)
-      .attr('d', line as any);
-
-    // Add area under the curve for density graph
-    if (viewMode === 'density') {
-      const area = d3.area()
-        .x((d: any) => xScale(d.distance - results.distances[sourceIndex]))
-        .y0(height - margin.bottom)
-        .y1((d: any) => yScale(d.density))
-        .curve(d3.curveMonotoneX);
-
-      svg
-        .append('path')
-        .datum(chartData)
-        .attr('fill', 'steelblue')
-        .attr('fill-opacity', 0.2)
-        .attr('d', area as any);
-    }
-
-    // Add dots for data points
-    svg
-      .selectAll('circle')
-      .data(chartData)
-      .enter()
-      .append('circle')
-      .attr('cx', (d: any) => xScale(d.distance - results.distances[sourceIndex]))
-      .attr('cy', (d: any) => yScale(d[dataKey]))
-      .attr('r', 3)
-      .attr('fill', lineColor);
-
-    // Add threshold line for density view
-    if (viewMode === 'density') {
-      const thresholdValue = results.pollutionData[sourceIndex].density * 0.1;
-      
-      svg
-        .append('line')
-        .attr('x1', margin.left)
-        .attr('y1', yScale(thresholdValue))
-        .attr('x2', width - margin.right)
-        .attr('y2', yScale(thresholdValue))
-        .attr('stroke', 'red')
-        .attr('stroke-width', 1.5)
-        .attr('stroke-dasharray', '5,5');
-        
-      svg
-        .append('text')
-        .attr('x', margin.left + 10)
-        .attr('y', yScale(thresholdValue) - 5)
-        .attr('fill', 'red')
-        .attr('font-size', 12)
-        .text('Threshold (10%)');
-    }
-
-    // Add markers for source and threshold points
-    svg
-      .append('circle')
-      .attr('cx', xScale(0))
-      .attr('cy', yScale(chartData[0][dataKey]))
-      .attr('r', 5)
-      .attr('fill', 'red');
-
-    const thresholdIndex = results.pollutedSegment.length - 1;
-    const thresholdDistance = 
-      results.pollutionData.find((d: any) => d.point.id === results.thresholdPoint.id)?.distance - 
-      results.distances[sourceIndex];
-      
-    if (thresholdDistance) {
-      const thresholdY = results.pollutionData.find((d: any) => d.point.id === results.thresholdPoint.id)?.[dataKey] || 0;
-      
-      svg
-        .append('circle')
-        .attr('cx', xScale(thresholdDistance))
-        .attr('cy', yScale(thresholdY))
-        .attr('r', 5)
-        .attr('fill', 'green');
-    }
-
-    // Add tooltips for important points
-    const tooltipData = [
-      { label: 'Source', x: 0, y: chartData[0][dataKey], color: 'red' },
-      { label: 'Threshold Point', x: thresholdDistance || 0, 
-        y: results.pollutionData.find((d: any) => d.point.id === results.thresholdPoint.id)?.[dataKey] || 0, 
-        color: 'green' }
-    ];
-
-    tooltipData.forEach(point => {
-      svg
-        .append('text')
-        .attr('x', xScale(point.x))
-        .attr('y', yScale(point.y) - 15)
-        .attr('text-anchor', 'middle')
-        .attr('font-size', 12)
-        .attr('fill', point.color)
-        .text(point.label);
-    });
-  }, [results, viewMode, sourceIndex]);
+  console.log('Component rendering, results:', results);
 
   return (
     <div className="space-y-6">
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>Advanced Pollution Prediction Model</CardTitle>
+          <CardTitle>Pollution Prediction Model</CardTitle>
           <CardDescription>
-            Simulate the spread of pollutants through the Selangor River system with advanced hydrodynamic modeling
+            Simulate the spread of pollutants through the Selangor River system
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -825,16 +350,6 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
                     ))}
                   </SelectContent>
                 </Select>
-                {selectedLocation && (
-                  <div className="mt-2 p-3 bg-blue-50 border border-blue-100 rounded-md text-sm text-blue-700">
-                    <p><strong>Selected Location:</strong> {riverPath.find(p => p.id === selectedLocation)?.name}</p>
-                    <p><strong>Description:</strong> {riverPath.find(p => p.id === selectedLocation)?.description}</p>
-                    <p><strong>Characteristics:</strong> Width: {riverPath.find(p => p.id === selectedLocation)?.characteristics.width}m, 
-                       Depth: {riverPath.find(p => p.id === selectedLocation)?.characteristics.depth}m</p>
-                    <p><strong>Water Quality:</strong> DO: {riverPath.find(p => p.id === selectedLocation)?.characteristics.dissolved_oxygen} mg/L, 
-                       pH: {riverPath.find(p => p.id === selectedLocation)?.characteristics.pH}</p>
-                  </div>
-                )}
               </div>
               
               <div className="flex flex-col space-y-2">
@@ -851,17 +366,10 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
                     ))}
                   </SelectContent>
                 </Select>
-                {selectedPollutant && (
-                  <div className="mt-2 p-3 bg-rose-50 border border-rose-100 rounded-md text-sm text-rose-700">
-                    <p><strong>Pollutant:</strong> {pollutantTypes[selectedPollutant].name}</p>
-                    <p><strong>Decay Rate:</strong> {pollutantTypes[selectedPollutant].decayRate.toFixed(3)} (higher = faster natural breakdown)</p>
-                    <p><strong>Bioaccumulation:</strong> {pollutantTypes[selectedPollutant].bioaccumulation.toFixed(1)} (higher = greater ecological impact)</p>
-                  </div>
-                )}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="flow-velocity">Flow Velocity ({flowVelocity.toFixed(1)} m/s)</Label>
                 <Slider
@@ -895,54 +403,6 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
                   onValueChange={(value) => setTrappingRate(value[0])}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="temperature">Water Temperature ({temperature.toFixed(1)}°C)</Label>
-                <Slider
-                  id="temperature"
-                  min={25}
-                  max={35}
-                  step={0.5}
-                  value={[temperature]}
-                  onValueChange={(value) => setTemperature(value[0])}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="wind-speed">Wind Speed ({windSpeed.toFixed(1)} m/s)</Label>
-                <Slider
-                  id="wind-speed"
-                  min={0}
-                  max={20}
-                  step={0.5}
-                  value={[windSpeed]}
-                  onValueChange={(value) => setWindSpeed(value[0])}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="wind-direction">Wind Direction ({windDirection}°)</Label>
-                <Slider
-                  id="wind-direction"
-                  min={0}
-                  max={359}
-                  step={1}
-                  value={[windDirection]}
-                  onValueChange={(value) => setWindDirection(value[0])}
-                />
-                <div className="text-xs text-gray-500">0° = North, 90° = East, 180° = South, 270° = West</div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="precipitation">Precipitation ({precipitation.toFixed(1)} mm/h)</Label>
-                <Slider
-                  id="precipitation"
-                  min={0}
-                  max={50}
-                  step={1}
-                  value={[precipitation]}
-                  onValueChange={(value) => setPrecipitation(value[0])}
-                />
-              </div>
             </div>
 
             <Button onClick={calculatePollutionSpread} className="w-full md:w-auto">
@@ -969,246 +429,114 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
                     <p><strong>Pollutant Type:</strong> {pollutantTypes[selectedPollutant].name}</p>
                   </div>
                   <div className="p-4 bg-amber-50 border border-amber-100 rounded-md text-sm">
-                    <h4 className="font-semibold text-amber-800 mb-2">Monitoring Data</h4>
-                    {results.sensorReadings.map((sensor, idx) => (
-                      <div key={idx} className="mb-1">
-                        <span>{sensor.location}: </span>
-                        <span className={
-                          sensor.qualityImpact === "Severe" ? "text-red-600 font-bold" : 
-                          sensor.qualityImpact === "High" ? "text-red-500" : 
-                          sensor.qualityImpact === "Moderate" ? "text-amber-500" : 
-                          sensor.qualityImpact === "Low" ? "text-amber-400" : "text-green-500"
-                        }>
-                          {sensor.qualityImpact}
-                        </span>
-                        <span className="text-xs ml-1">({sensor.arrivalTime.toFixed(1)}h)</span>
-                      </div>
-                    ))}
+                    <h4 className="font-semibold text-amber-800 mb-2">Status</h4>
+                    <p><strong>Model:</strong> Simplified Prediction</p>
+                    <p><strong>River Points:</strong> {riverPath.length} locations</p>
+                    <p><strong>Calculation Status:</strong> Complete</p>
                   </div>
                 </div>
 
                 <div className="mt-6">
-                  <Tabs defaultValue="map" className="w-full">
-                    <TabsList className="mb-4">
-                      <TabsTrigger value="map" className="flex items-center gap-1">
-                        <AreaChart className="h-4 w-4" />
-                        River Map
-                      </TabsTrigger>
-                      <TabsTrigger value="chart" className="flex items-center gap-1">
-                        <LineChart className="h-4 w-4" />
-                        Data Charts
-                      </TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="map" className="space-y-4">
-                      <div className="w-full h-[500px] border rounded-lg overflow-hidden">
-                        <MapContainer
-                          center={[3.3315, 101.2750]}
-                          zoom={11}
-                          style={{ height: '100%', width: '100%' }}
-                          className="z-0"
+                  <h4 className="font-semibold mb-4">River Map Visualization</h4>
+                  <div className="w-full h-[500px] border rounded-lg overflow-hidden">
+                    <MapContainer
+                      center={[3.3315, 101.2750]}
+                      zoom={11}
+                      style={{ height: '100%', width: '100%' }}
+                      className="z-0"
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      
+                      {/* River path polyline */}
+                      <Polyline
+                        positions={riverPath.map(point => [point.lat, point.lon])}
+                        color="#0066cc"
+                        weight={4}
+                        opacity={0.7}
+                      />
+                      
+                      {/* Pollution visualization */}
+                      {results.pollutionData.map((data: any, index: number) => {
+                        if (data.density <= 0) return null;
+                        
+                        const maxDensity = Math.max(...results.pollutionData.map((d: any) => d.density));
+                        const radius = Math.max(5, (data.density / maxDensity) * 20);
+                        const color = getPollutionColor(data.density, maxDensity);
+                        
+                        return (
+                          <CircleMarker
+                            key={`pollution-${index}`}
+                            center={[data.point.lat, data.point.lon]}
+                            radius={radius}
+                            fillColor={color}
+                            color={color}
+                            weight={2}
+                            opacity={0.8}
+                            fillOpacity={0.6}
+                          >
+                            <Popup>
+                              <div className="text-sm">
+                                <h4 className="font-semibold">{data.point.name}</h4>
+                                <p>Pollution Density: {data.density.toFixed(2)}</p>
+                                <p>Distance from Source: {(data.distance - results.distances[sourceIndex]).toFixed(2)} km</p>
+                                <p>Travel Time: {data.time.toFixed(2)} hours</p>
+                                <p>Water Quality Impact: {data.waterQualityImpact}</p>
+                              </div>
+                            </Popup>
+                          </CircleMarker>
+                        );
+                      })}
+                      
+                      {/* River point markers */}
+                      {riverPath.map((point) => (
+                        <CircleMarker
+                          key={`point-${point.id}`}
+                          center={[point.lat, point.lon]}
+                          radius={point.id === selectedLocation ? 8 : 5}
+                          fillColor={point.id === selectedLocation ? '#ff0000' : '#333333'}
+                          color="#ffffff"
+                          weight={2}
+                          opacity={1}
+                          fillOpacity={0.8}
                         >
-                          <TileLayer
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                          />
-                          
-                          {/* River path polyline */}
-                          <Polyline
-                            positions={riverPath.map(point => [point.lat, point.lon])}
-                            color="#0066cc"
-                            weight={4}
-                            opacity={0.7}
-                          />
-                          
-                          {/* Pollution visualization */}
-                          {results && results.pollutionData.map((data: any, index: number) => {
-                            if (data.density <= 0) return null;
-                            
-                            const maxDensity = Math.max(...results.pollutionData.map((d: any) => d.density));
-                            const radius = Math.max(5, (data.density / maxDensity) * 20);
-                            const color = getPollutionColor(data.density, maxDensity);
-                            
-                            return (
-                              <CircleMarker
-                                key={`pollution-${index}`}
-                                center={[data.point.lat, data.point.lon]}
-                                radius={radius}
-                                fillColor={color}
-                                color={color}
-                                weight={2}
-                                opacity={0.8}
-                                fillOpacity={0.6}
-                              >
-                                <Popup>
-                                  <div className="text-sm">
-                                    <h4 className="font-semibold">{data.point.name}</h4>
-                                    <p>Pollution Density: {data.density.toFixed(2)}</p>
-                                    <p>Distance from Source: {(data.distance - results.distances[sourceIndex]).toFixed(2)} km</p>
-                                    <p>Travel Time: {data.time.toFixed(2)} hours</p>
-                                    <p>Water Quality Impact: {data.waterQualityImpact}</p>
-                                    <p>Dissolved Oxygen: {data.dissolvedOxygen.toFixed(1)} mg/L</p>
-                                    <p>pH: {data.pH.toFixed(1)}</p>
-                                    <p>Turbidity: {data.turbidity.toFixed(1)} NTU</p>
-                                  </div>
-                                </Popup>
-                              </CircleMarker>
-                            );
-                          })}
-                          
-                          {/* River point markers */}
-                          {riverPath.map((point, index) => (
-                            <CircleMarker
-                              key={`point-${point.id}`}
-                              center={[point.lat, point.lon]}
-                              radius={point.id === selectedLocation ? 8 : 5}
-                              fillColor={point.id === selectedLocation ? '#ff0000' : '#333333'}
-                              color="#ffffff"
-                              weight={2}
-                              opacity={1}
-                              fillOpacity={0.8}
-                            >
-                              <Popup>
-                                <div className="text-sm">
-                                  <h4 className="font-semibold">{point.name}</h4>
-                                  <p>{point.description}</p>
-                                  <p>Width: {point.characteristics.width}m</p>
-                                  <p>Depth: {point.characteristics.depth}m</p>
-                                  <p>DO: {point.characteristics.dissolved_oxygen} mg/L</p>
-                                  <p>pH: {point.characteristics.pH}</p>
-                                </div>
-                              </Popup>
-                            </CircleMarker>
-                          ))}
-                          
-                          {/* Source and threshold point highlights */}
-                          {results && (
-                            <>
-                              <CircleMarker
-                                center={[results.sourcePoint.lat, results.sourcePoint.lon]}
-                                radius={12}
-                                fillColor="#ff0000"
-                                color="#ffffff"
-                                weight={3}
-                                opacity={1}
-                                fillOpacity={0.9}
-                              >
-                                <Popup>
-                                  <div className="text-sm">
-                                    <h4 className="font-semibold text-red-600">Pollution Source</h4>
-                                    <p>{results.sourcePoint.name}</p>
-                                  </div>
-                                </Popup>
-                              </CircleMarker>
-                              
-                              <CircleMarker
-                                center={[results.thresholdPoint.lat, results.thresholdPoint.lon]}
-                                radius={10}
-                                fillColor="#00ff00"
-                                color="#ffffff"
-                                weight={3}
-                                opacity={1}
-                                fillOpacity={0.9}
-                              >
-                                <Popup>
-                                  <div className="text-sm">
-                                    <h4 className="font-semibold text-green-600">Threshold Point</h4>
-                                    <p>{results.thresholdPoint.name}</p>
-                                    <p>Pollution below 10% of initial</p>
-                                  </div>
-                                </Popup>
-                              </CircleMarker>
-                            </>
-                          )}
-                        </MapContainer>
+                          <Popup>
+                            <div className="text-sm">
+                              <h4 className="font-semibold">{point.name}</h4>
+                              <p>{point.description}</p>
+                              <p>Width: {point.characteristics.width}m</p>
+                              <p>Depth: {point.characteristics.depth}m</p>
+                            </div>
+                          </Popup>
+                        </CircleMarker>
+                      ))}
+                    </MapContainer>
+                  </div>
+                  
+                  {/* Map legend */}
+                  <div className="bg-white p-4 border rounded-lg mt-4">
+                    <h4 className="font-semibold mb-2">Map Legend</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-blue-600 rounded"></div>
+                        <span>River Path</span>
                       </div>
-                      
-                      {/* Map legend */}
-                      <div className="bg-white p-4 border rounded-lg">
-                        <h4 className="font-semibold mb-2">Map Legend</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                          <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 bg-blue-600 rounded"></div>
-                            <span>River Path</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 bg-red-600 rounded-full"></div>
-                            <span>Pollution Source</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 bg-green-500 rounded-full"></div>
-                            <span>Threshold Point</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 bg-gradient-to-r from-red-600 to-green-300 rounded-full"></div>
-                            <span>Pollution Intensity</span>
-                          </div>
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-red-600 rounded-full"></div>
+                        <span>Pollution Source</span>
                       </div>
-                    </TabsContent>
-                    
-                    <TabsContent value="chart" className="space-y-4">
-                      <div className="flex justify-center mb-4">
-                        <div className="inline-flex rounded-md shadow-sm">
-                          <button
-                            onClick={() => setViewMode('density')}
-                            className={`px-4 py-2 text-sm font-medium rounded-l-lg ${
-                              viewMode === 'density' 
-                                ? 'bg-blue-600 text-white' 
-                                : 'bg-white text-gray-700 hover:bg-gray-100'
-                            } border border-gray-200`}
-                          >
-                            Density
-                          </button>
-                          <button
-                            onClick={() => setViewMode('oxygen')}
-                            className={`px-4 py-2 text-sm font-medium ${
-                              viewMode === 'oxygen' 
-                                ? 'bg-blue-600 text-white' 
-                                : 'bg-white text-gray-700 hover:bg-gray-100'
-                            } border-t border-b border-gray-200`}
-                          >
-                            Dissolved Oxygen
-                          </button>
-                          <button
-                            onClick={() => setViewMode('ph')}
-                            className={`px-4 py-2 text-sm font-medium ${
-                              viewMode === 'ph' 
-                                ? 'bg-blue-600 text-white' 
-                                : 'bg-white text-gray-700 hover:bg-gray-100'
-                            } border-t border-b border-gray-200`}
-                          >
-                            pH
-                          </button>
-                          <button
-                            onClick={() => setViewMode('turbidity')}
-                            className={`px-4 py-2 text-sm font-medium ${
-                              viewMode === 'turbidity' 
-                                ? 'bg-blue-600 text-white' 
-                                : 'bg-white text-gray-700 hover:bg-gray-100'
-                            } border-t border-b border-gray-200`}
-                          >
-                            Turbidity
-                          </button>
-                          <button
-                            onClick={() => setViewMode('time')}
-                            className={`px-4 py-2 text-sm font-medium rounded-r-lg ${
-                              viewMode === 'time' 
-                                ? 'bg-blue-600 text-white' 
-                                : 'bg-white text-gray-700 hover:bg-gray-100'
-                            } border border-gray-200`}
-                          >
-                            Travel Time
-                          </button>
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-black rounded-full"></div>
+                        <span>River Points</span>
                       </div>
-                      
-                      <div className="flex justify-center">
-                        <div className="w-full overflow-x-auto">
-                          <svg ref={svgRef} width={800} height={400}></svg>
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-gradient-to-r from-red-600 to-green-300 rounded-full"></div>
+                        <span>Pollution Intensity</span>
                       </div>
-                    </TabsContent>
-                  </Tabs>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
