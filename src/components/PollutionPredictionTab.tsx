@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { MapContainer, TileLayer, Polyline, CircleMarker, Popup } from 'react-leaflet';
@@ -316,6 +315,85 @@ const PollutionPredictionTab: React.FC = () => {
     return '#90EE90';
   };
 
+  const MapVisualization = () => {
+    if (!results) return null;
+
+    const maxDensity = Math.max(...results.pollutionData.map((d: any) => d.density));
+
+    return (
+      <MapContainer
+        center={[3.3315, 101.2750]}
+        zoom={11}
+        style={{ height: '100%', width: '100%' }}
+        className="z-0"
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        
+        <Polyline
+          positions={riverPath.map(point => [point.lat, point.lon])}
+          color="#0066cc"
+          weight={4}
+          opacity={0.7}
+        />
+        
+        {results.pollutionData.map((data: any, index: number) => {
+          if (data.density <= 0) return null;
+          
+          const radius = Math.max(5, (data.density / maxDensity) * 20);
+          const color = getPollutionColor(data.density, maxDensity);
+          
+          return (
+            <CircleMarker
+              key={`pollution-${index}`}
+              center={[data.point.lat, data.point.lon]}
+              radius={radius}
+              fillColor={color}
+              color={color}
+              weight={2}
+              opacity={0.8}
+              fillOpacity={0.6}
+            >
+              <Popup>
+                <div className="text-sm">
+                  <h4 className="font-semibold">{data.point.name}</h4>
+                  <p>Pollution Density: {data.density.toFixed(2)}</p>
+                  <p>Distance from Source: {(data.distance - results.distances[sourceIndex]).toFixed(2)} km</p>
+                  <p>Travel Time: {data.time.toFixed(2)} hours</p>
+                  <p>Water Quality Impact: {data.waterQualityImpact}</p>
+                </div>
+              </Popup>
+            </CircleMarker>
+          );
+        })}
+        
+        {riverPath.map((point) => (
+          <CircleMarker
+            key={`point-${point.id}`}
+            center={[point.lat, point.lon]}
+            radius={point.id === selectedLocation ? 8 : 5}
+            fillColor={point.id === selectedLocation ? '#ff0000' : '#333333'}
+            color="#ffffff"
+            weight={2}
+            opacity={1}
+            fillOpacity={0.8}
+          >
+            <Popup>
+              <div className="text-sm">
+                <h4 className="font-semibold">{point.name}</h4>
+                <p>{point.description}</p>
+                <p>Width: {point.characteristics.width}m</p>
+                <p>Depth: {point.characteristics.depth}m</p>
+              </div>
+            </Popup>
+          </CircleMarker>
+        ))}
+      </MapContainer>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <Card className="w-full">
@@ -431,77 +509,7 @@ const PollutionPredictionTab: React.FC = () => {
                 <div className="mt-6">
                   <h4 className="font-semibold mb-4">OpenStreetMap Visualization</h4>
                   <div className="w-full h-[500px] border rounded-lg overflow-hidden">
-                    <MapContainer
-                      center={[3.3315, 101.2750]}
-                      zoom={11}
-                      style={{ height: '100%', width: '100%' }}
-                      className="z-0"
-                    >
-                      <TileLayer
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      />
-                      
-                      <Polyline
-                        positions={riverPath.map(point => [point.lat, point.lon])}
-                        color="#0066cc"
-                        weight={4}
-                        opacity={0.7}
-                      />
-                      
-                      {results.pollutionData.map((data: any, index: number) => {
-                        if (data.density <= 0) return null;
-                        
-                        const maxDensity = Math.max(...results.pollutionData.map((d: any) => d.density));
-                        const radius = Math.max(5, (data.density / maxDensity) * 20);
-                        const color = getPollutionColor(data.density, maxDensity);
-                        
-                        return (
-                          <CircleMarker
-                            key={`pollution-${index}`}
-                            center={[data.point.lat, data.point.lon]}
-                            radius={radius}
-                            fillColor={color}
-                            color={color}
-                            weight={2}
-                            opacity={0.8}
-                            fillOpacity={0.6}
-                          >
-                            <Popup>
-                              <div className="text-sm">
-                                <h4 className="font-semibold">{data.point.name}</h4>
-                                <p>Pollution Density: {data.density.toFixed(2)}</p>
-                                <p>Distance from Source: {(data.distance - results.distances[sourceIndex]).toFixed(2)} km</p>
-                                <p>Travel Time: {data.time.toFixed(2)} hours</p>
-                                <p>Water Quality Impact: {data.waterQualityImpact}</p>
-                              </div>
-                            </Popup>
-                          </CircleMarker>
-                        );
-                      })}
-                      
-                      {riverPath.map((point) => (
-                        <CircleMarker
-                          key={`point-${point.id}`}
-                          center={[point.lat, point.lon]}
-                          radius={point.id === selectedLocation ? 8 : 5}
-                          fillColor={point.id === selectedLocation ? '#ff0000' : '#333333'}
-                          color="#ffffff"
-                          weight={2}
-                          opacity={1}
-                          fillOpacity={0.8}
-                        >
-                          <Popup>
-                            <div className="text-sm">
-                              <h4 className="font-semibold">{point.name}</h4>
-                              <p>{point.description}</p>
-                              <p>Width: {point.characteristics.width}m</p>
-                              <p>Depth: {point.characteristics.depth}m</p>
-                            </div>
-                          </Popup>
-                        </CircleMarker>
-                      ))}
-                    </MapContainer>
+                    <MapVisualization />
                   </div>
                   
                   <div className="bg-white p-4 border rounded-lg mt-4">
