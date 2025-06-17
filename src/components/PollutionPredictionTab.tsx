@@ -6,8 +6,6 @@ import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AreaChart, BarChart, LineChart } from 'lucide-react';
 import L from 'leaflet';
 
 // Fix for default markers in react-leaflet
@@ -73,10 +71,6 @@ interface PollutionResults {
     arrivalTime: number;
     qualityImpact: string;
   }[];
-}
-
-interface PollutionPredictionProps {
-  pollutionData?: any;
 }
 
 // Simplified river path data
@@ -197,7 +191,7 @@ const pollutantTypes: Record<string, PollutantProperties> = {
   }
 };
 
-const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionData }) => {
+const PollutionPredictionTab: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState<string>("estuary");
   const [selectedPollutant, setSelectedPollutant] = useState<string>("chemical");
   const [flowVelocity, setFlowVelocity] = useState<number>(0.5);
@@ -322,8 +316,6 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
     return '#90EE90';
   };
 
-  console.log('Component rendering, results:', results);
-
   return (
     <div className="space-y-6">
       <Card className="w-full">
@@ -437,7 +429,7 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
                 </div>
 
                 <div className="mt-6">
-                  <h4 className="font-semibold mb-4">River Map Visualization</h4>
+                  <h4 className="font-semibold mb-4">OpenStreetMap Visualization</h4>
                   <div className="w-full h-[500px] border rounded-lg overflow-hidden">
                     <MapContainer
                       center={[3.3315, 101.2750]}
@@ -450,7 +442,6 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
                         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                       />
                       
-                      {/* River path polyline */}
                       <Polyline
                         positions={riverPath.map(point => [point.lat, point.lon])}
                         color="#0066cc"
@@ -458,7 +449,6 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
                         opacity={0.7}
                       />
                       
-                      {/* Pollution visualization */}
                       {results.pollutionData.map((data: any, index: number) => {
                         if (data.density <= 0) return null;
                         
@@ -490,7 +480,6 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
                         );
                       })}
                       
-                      {/* River point markers */}
                       {riverPath.map((point) => (
                         <CircleMarker
                           key={`point-${point.id}`}
@@ -515,7 +504,6 @@ const PollutionPredictionTab: React.FC<PollutionPredictionProps> = ({ pollutionD
                     </MapContainer>
                   </div>
                   
-                  {/* Map legend */}
                   <div className="bg-white p-4 border rounded-lg mt-4">
                     <h4 className="font-semibold mb-2">Map Legend</h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
