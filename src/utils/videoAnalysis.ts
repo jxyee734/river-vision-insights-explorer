@@ -273,12 +273,21 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
       trashCategories: Array.from(allCategories),
     });
 
+    // Provide helpful feedback if trash detection failed
+    const trashDetectionWorked =
+      trashDetections.length > 0 || maxTrashCountPerFrame > 0;
+    const environmentalImpact = trashDetectionWorked
+      ? maxTrashCountPerFrame > 0
+        ? "Trash detected - environmental impact assessment needed"
+        : "No significant environmental impact detected"
+      : "Trash detection unavailable - external service error";
+
     return {
       averageVelocity: flowMetrics.averageVelocity,
       flowMagnitude: flowMetrics.flowMagnitude,
       trashCount: maxTrashCountPerFrame, // Use maxTrashCountPerFrame here
       trashCategories: Array.from(allCategories),
-      environmentalImpact: "No significant environmental impact detected",
+      environmentalImpact,
       frames,
       trashDetectionImages,
       flowVectors,
