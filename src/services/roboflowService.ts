@@ -35,20 +35,13 @@ export const detectTrashInImage = async (
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      // Optimize image data by removing metadata
-      const cleanImageData = imageData.replace(
-        /^data:image\/[a-z]+;base64,/,
-        "",
-      );
-
       const response = await axios({
         method: "POST",
         url: "https://serverless.roboflow.com/ocean-plastics-waste-detection-float-plastics/1",
         params: {
           api_key: ROBOFLOW_API_KEY,
-          confidence: confidenceThreshold,
         },
-        data: cleanImageData,
+        data: imageData,
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
@@ -57,6 +50,7 @@ export const detectTrashInImage = async (
           "Request timed out after " + TIMEOUT / 1000 + " seconds",
       });
 
+      console.log("Roboflow API response:", response.data);
       return response.data;
     } catch (error) {
       lastError = error;
