@@ -192,7 +192,7 @@ const Index = () => {
               onClick={toggleWeatherAndSensor}
               className="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 text-sm"
             >
-              Weather & Sensor
+              Weather & Drones
             </button>
             <button
               onClick={togglePollutionPrediction}
