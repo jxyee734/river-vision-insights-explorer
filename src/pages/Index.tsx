@@ -32,9 +32,31 @@ declare global {
   }
 }
 
+const UserProfileButton = () => {
+  const { user } = useUser();
+  const navigate = useNavigate();
+
+  return (
+    <div className="flex items-center space-x-2">
+      <button
+        onClick={() => navigate("/profile")}
+        className="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg transition-colors"
+      >
+        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+          {user?.name?.charAt(0).toUpperCase() || "U"}
+        </div>
+        <span className="text-sm font-medium text-gray-700">
+          {user?.name || "User"}
+        </span>
+      </button>
+    </div>
+  );
+};
+
 const Index = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, saveAnalysis } = useUser();
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(
