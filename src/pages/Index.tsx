@@ -82,12 +82,21 @@ const Index = () => {
 
       toast.info("Processing video with AI analysis, please wait...");
 
-      const result = await analyzeVideo(file);
+      const result = await analyzeVideo(
+        file,
+        user?.preferences.opticalFlowMethod,
+      );
       result.riverCategory = {
         state: location,
         river: river,
       };
+      result.fileName = file.name;
       setAnalysisResult(result);
+
+      // Auto-save analysis if enabled
+      if (user?.preferences.autoSave) {
+        saveAnalysis(result);
+      }
 
       // Show different messages based on whether trash detection worked
       if (result.environmentalImpact?.includes("unavailable")) {
