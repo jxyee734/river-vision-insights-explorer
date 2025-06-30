@@ -84,9 +84,8 @@ class GoogleSheetsService {
       // Prepare data for Google Sheets
       const sheetData = this.prepareSheetData(records);
 
-      // Simulate API call to Google Sheets
-      // In a real implementation, you would use the Google Sheets API
-      await this.simulateGoogleSheetsSync(sheetData);
+      // Real Google Sheets API integration
+      await this.realGoogleSheetsSync(sheetData);
 
       recordsSynced = records.length;
 
