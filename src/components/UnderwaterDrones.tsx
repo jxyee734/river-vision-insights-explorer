@@ -372,7 +372,7 @@ const UnderwaterDrones: React.FC = () => {
                 <Card>
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 mb-2">
-                      <Droplet2 className="h-5 w-5 text-blue-500" />
+                      <Droplet className="h-5 w-5 text-blue-500" />
                       <span className="font-medium">pH Level</span>
                     </div>
                     <div className="text-2xl font-bold">
