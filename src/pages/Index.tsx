@@ -350,6 +350,28 @@ const Index = () => {
               </div>
             )}
 
+            {showDatabase && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                <div
+                  className="bg-white rounded-lg shadow-lg max-w-7xl w-full p-6 overflow-auto"
+                  style={{ maxHeight: "95vh" }}
+                >
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-2xl font-bold">
+                      Database & Google Sheets Sync
+                    </h2>
+                    <button
+                      onClick={toggleDatabase}
+                      className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
+                    >
+                      Close
+                    </button>
+                  </div>
+                  <DatabaseManager />
+                </div>
+              </div>
+            )}
+
             {analysisResult && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
