@@ -181,51 +181,222 @@ const WeatherTab: React.FC = () => {
     return { text: "Clear", color: "bg-green-500" };
   };
 
+  if (!weather) {
+    return (
+      <Card className="w-full">
+        <CardContent className="flex items-center justify-center p-8">
+          <div className="flex items-center gap-2">
+            <RefreshCw className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />
+            <span>Loading weather data...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const condition = getWeatherCondition(
+    weather.current.cloudcover,
+    weather.current.rainfall,
+  );
+
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Weather Conditions</CardTitle>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Sun className="h-5 w-5 text-orange-500" />
+              Weather Station - Open-Meteo API
+            </CardTitle>
+            <CardDescription className="flex items-center gap-2 mt-2">
+              <MapPin className="h-4 w-4" />
+              {weather.location.name}, {weather.location.country}
+              <Clock className="h-4 w-4 ml-4" />
+              Last update: {weather.lastUpdate}
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              fetchWeather(
+                weather.location.latitude,
+                weather.location.longitude,
+              )
+            }
+            disabled={loading}
+          >
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg">
-            <div className="flex items-center">
-              <Thermometer className="h-5 w-5 text-gray-400 mr-3" />
-              <div>
-                <h3 className="text-sm font-medium text-gray-100">
-                  Temperature
-                </h3>
-                <span className="text-xl font-bold text-gray-300">
-                  {weather?.temperature ?? "--"}°C
-                </span>
+        <Tabs defaultValue="current" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="current">Current</TabsTrigger>
+            <TabsTrigger value="forecast">24h Forecast</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="current" className="space-y-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-4">
+                <div className="text-4xl font-bold">
+                  {weather.current.temperature.toFixed(1)}°C
+                </div>
+                <div>
+                  <Badge className={`${condition.color} text-white`}>
+                    {condition.text}
+                  </Badge>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Feels like {weather.current.apparentTemperature.toFixed(1)}
+                    °C
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg">
-            <div className="flex items-center">
-              <Wind className="h-5 w-5 text-gray-400 mr-3" />
-              <div>
-                <h3 className="text-sm font-medium text-gray-100">
-                  Wind Speed
-                </h3>
-                <span className="text-xl font-bold text-gray-300">
-                  {weather?.windspeed ?? "--"} km/h
-                </span>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Wind className="h-5 w-5 text-blue-500" />
+                    <span className="font-medium">Wind</span>
+                  </div>
+                  <div className="text-xl font-bold">
+                    {weather.current.windspeed.toFixed(1)} km/h
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {getWindDirection(weather.current.winddirection)}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Droplets className="h-5 w-5 text-blue-500" />
+                    <span className="font-medium">Humidity</span>
+                  </div>
+                  <div className="text-xl font-bold">
+                    {weather.current.humidity.toFixed(0)}%
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Gauge className="h-5 w-5 text-purple-500" />
+                    <span className="font-medium">Pressure</span>
+                  </div>
+                  <div className="text-xl font-bold">
+                    {weather.current.pressure.toFixed(0)} hPa
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CloudRain className="h-5 w-5 text-green-500" />
+                    <span className="font-medium">Rainfall</span>
+                  </div>
+                  <div className="text-xl font-bold">
+                    {weather.current.rainfall.toFixed(1)} mm
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Eye className="h-5 w-5 text-gray-500" />
+                    <span className="font-medium">Visibility</span>
+                  </div>
+                  <div className="text-xl font-bold">
+                    {weather.current.visibility} km
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Cloud className="h-5 w-5 text-gray-500" />
+                    <span className="font-medium">Cloud Cover</span>
+                  </div>
+                  <div className="text-xl font-bold">
+                    {weather.current.cloudcover.toFixed(0)}%
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="forecast" className="space-y-4">
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={weather.hourly}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="time" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="temperature"
+                    stroke="#ef4444"
+                    strokeWidth={2}
+                    name="Temperature (°C)"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="humidity"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    name="Humidity (%)"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="precipitation"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    name="Precipitation (mm)"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <h4 className="font-semibold text-blue-800 mb-2">
+                Weather Impact on River Analysis
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium">Water Conditions:</span>
+                  <p className="text-gray-600">
+                    {weather.current.rainfall > 5
+                      ? "Heavy rainfall may affect water clarity and flow patterns"
+                      : weather.current.rainfall > 1
+                        ? "Light rainfall present, minimal impact on analysis"
+                        : "Clear conditions optimal for video analysis"}
+                  </p>
+                </div>
+                <div>
+                  <span className="font-medium">Visibility:</span>
+                  <p className="text-gray-600">
+                    {weather.current.cloudcover > 75
+                      ? "Overcast conditions may reduce natural lighting"
+                      : "Good visibility for drone operations"}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg">
-            <div className="flex items-center">
-              <CloudRain className="h-5 w-5 text-gray-400 mr-3" />
-              <div>
-                <h3 className="text-sm font-medium text-gray-100">Rainfall</h3>
-                <span className="text-xl font-bold text-gray-300">
-                  {weather?.rainfall ?? "--"} mm
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );
