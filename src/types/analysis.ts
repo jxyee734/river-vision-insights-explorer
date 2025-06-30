@@ -1,6 +1,6 @@
-
 // Import ImageData from a web compatible type
 export interface AnalysisResult {
+  fileName?: string;
   averageVelocity: number;
   flowMagnitude: number;
   trashCount: number;
@@ -8,7 +8,7 @@ export interface AnalysisResult {
   environmentalImpact: string;
   frames: ImageData[];
   trashDetectionImages: string[]; // We'll keep this for backward compatibility
-  flowVectors: Array<{velocities: number[], directions: number[]}>;  
+  flowVectors: Array<{ velocities: number[]; directions: number[] }>;
   processedVideoUrl?: string; // URL for the processed video with annotations
   downloadUrl?: string; // URL for downloading the processed video
   videoUrl?: string; // URL to the processed video
@@ -23,7 +23,7 @@ export interface AnalysisResult {
       height: number; // normalized height (0-1)
     }>;
   }>;
-  
+
   // Depth analysis fields
   depthProfile?: number[];
   averageDepth?: number;
