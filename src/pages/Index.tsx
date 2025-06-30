@@ -6,7 +6,7 @@ import UploadSection from "@/components/UploadSection";
 import VideoPlayer from "@/components/VideoPlayer";
 import ProcessingVisualization from "@/components/ProcessingVisualization";
 import { analyzeVideo } from "@/utils/videoAnalysis";
-import { CloudLightning, FileVideo, ArrowRight } from "lucide-react";
+import { CloudLightning, FileVideo, ArrowRight, User } from "lucide-react";
 import { AnalysisResult } from "@/types/analysis";
 import { Card, CardContent } from "@/components/ui/card";
 import WeatherTab from "@/components/WeatherTab";
