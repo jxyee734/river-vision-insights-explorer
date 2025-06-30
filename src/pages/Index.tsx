@@ -241,6 +241,12 @@ const Index = () => {
             >
               Water Quality
             </button>
+            <button
+              onClick={toggleDatabase}
+              className="bg-green-500 text-white px-3 py-2 rounded-lg hover:bg-green-600 text-sm"
+            >
+              Database
+            </button>
             <UserProfileButton />
           </div>
         </div>
