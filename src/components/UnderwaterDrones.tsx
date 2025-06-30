@@ -156,16 +156,61 @@ const UnderwaterDrones: React.FC = () => {
     {
       id: "mission-001",
       name: "Water Quality Survey - Klang River",
+      description: "Comprehensive water quality monitoring along Klang River",
       waypoints: [
-        { lat: 3.139, lng: 101.6869, depth: 3, duration: 300 },
-        { lat: 3.1395, lng: 101.6875, depth: 5, duration: 600 },
-        { lat: 3.14, lng: 101.688, depth: 4, duration: 400 },
+        {
+          id: "wp-001",
+          lat: 3.139,
+          lng: 101.6869,
+          depth: 3,
+          duration: 300,
+          action: "sample",
+          notes: "Initial sampling point near bridge",
+        },
+        {
+          id: "wp-002",
+          lat: 3.1395,
+          lng: 101.6875,
+          depth: 5,
+          duration: 600,
+          action: "monitor",
+          notes: "Deep monitoring for pollutant detection",
+        },
+        {
+          id: "wp-003",
+          lat: 3.14,
+          lng: 101.688,
+          depth: 4,
+          duration: 400,
+          action: "record",
+          notes: "Video recording of riverbed conditions",
+        },
       ],
       status: "pending",
       progress: 0,
       estimatedTime: 1300,
+      createdAt: new Date().toISOString(),
+      priority: "medium",
     },
   ]);
+
+  // Mission planning states
+  const [isCreatingMission, setIsCreatingMission] = useState(false);
+  const [editingMission, setEditingMission] = useState<Mission | null>(null);
+  const [newMission, setNewMission] = useState<Partial<Mission>>({
+    name: "",
+    description: "",
+    waypoints: [],
+    priority: "medium",
+  });
+  const [newWaypoint, setNewWaypoint] = useState<Partial<Waypoint>>({
+    lat: 3.139,
+    lng: 101.6869,
+    depth: 3,
+    duration: 300,
+    action: "sample",
+    notes: "",
+  });
 
   useEffect(() => {
     const interval = setInterval(() => {
