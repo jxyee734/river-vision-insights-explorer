@@ -1,10 +1,5 @@
 import { extractVideoFrame, delay } from "../services/geminiService";
 import { detectTrashInImage } from "../services/roboflowService";
-import {
-  calculateFarnebackOpticalFlow,
-  waitForOpenCV,
-  isOpenCVReady,
-} from "./openCVFlow";
 import type { AnalysisResult } from "../types/analysis";
 
 /**
