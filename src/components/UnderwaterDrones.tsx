@@ -73,14 +73,27 @@ interface SensorReading {
   pressure: number;
 }
 
+interface Waypoint {
+  id: string;
+  lat: number;
+  lng: number;
+  depth: number;
+  duration: number;
+  action: "sample" | "record" | "monitor" | "survey";
+  notes?: string;
+}
+
 interface Mission {
   id: string;
   name: string;
-  waypoints: { lat: number; lng: number; depth: number; duration: number }[];
+  description?: string;
+  waypoints: Waypoint[];
   status: "pending" | "active" | "completed" | "paused";
   progress: number;
   estimatedTime: number;
   startTime?: string;
+  createdAt: string;
+  priority: "low" | "medium" | "high";
 }
 
 const mockDrones: DroneStatus[] = [
