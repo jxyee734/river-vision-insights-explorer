@@ -3,6 +3,7 @@ import { VideoAnalysisRecord } from "../utils/database";
 export interface GoogleSheetsConfig {
   spreadsheetId: string;
   sheetName: string;
+  appsScriptUrl?: string;
   apiKey?: string;
   accessToken?: string;
 }
