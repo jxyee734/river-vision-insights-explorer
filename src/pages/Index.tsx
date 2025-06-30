@@ -27,6 +27,7 @@ import PollutionPredictionTab from "@/components/PollutionPredictionTab";
 import DatabaseManager from "@/components/DatabaseManager";
 import { generateStateWaterQuality } from "@/utils/stateWaterQuality";
 import { database, dbHelpers } from "@/utils/database";
+import { videoUploadService } from "@/services/videoUploadService";
 
 declare global {
   interface Window {
