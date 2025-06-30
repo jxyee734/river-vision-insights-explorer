@@ -96,6 +96,34 @@ const Index = () => {
       result.fileName = file.name;
       setAnalysisResult(result);
 
+      // Save to database
+      try {
+        const dbRecord = dbHelpers.createRecordFromAnalysis(
+          result,
+          file,
+          { state: location, river: river },
+          {
+            processingMetrics: {
+              framesProcessed: result.frames?.length || 0,
+              processingTime: 0, // Will be updated with actual time
+              opticalFlowMethod:
+                user?.preferences.opticalFlowMethod || "lucas-kanade",
+              analysisQuality: "medium",
+            },
+            tags: [
+              "video-analysis",
+              location.toLowerCase(),
+              river.toLowerCase(),
+            ],
+            notes: `Automated analysis of ${file.name}`,
+          },
+        );
+        database.saveRecord(dbRecord);
+        console.log("Analysis saved to database");
+      } catch (error) {
+        console.error("Failed to save analysis to database:", error);
+      }
+
       // Auto-save analysis if enabled
       if (user?.preferences.autoSave) {
         saveAnalysis(result);
