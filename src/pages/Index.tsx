@@ -68,6 +68,7 @@ const Index = () => {
   const [showWeatherAndSensor, setShowWeatherAndSensor] = useState(false);
   const [showPollutionPrediction, setShowPollutionPrediction] = useState(false);
   const [showWaterQuality, setShowWaterQuality] = useState(false);
+  const [showDatabase, setShowDatabase] = useState(false);
 
   const handleVideoUpload = async (
     file: File,
