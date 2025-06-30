@@ -22,7 +22,7 @@ import {
 } from "recharts";
 import DepthVisualization from "@/components/DepthVisualization";
 import { motion, AnimatePresence } from "framer-motion";
-import SensorTab from "@/components/SensorTab";
+import UnderwaterDrones from "@/components/UnderwaterDrones";
 import PollutionPredictionTab from "@/components/PollutionPredictionTab";
 import { generateStateWaterQuality } from "@/utils/stateWaterQuality";
 
