@@ -328,9 +328,111 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
   }
 }
 
-// Optical flow calculation moved to openCVFlow.ts for Farneback implementation
+/**
+ * Calculate optical flow between two frames
+ */
+function calculateOpticalFlow(
+  previousFrame: ImageData,
+  currentFrame: ImageData,
+): {
+  velocities: number[];
+  directions: number[];
+} {
+  const velocities: number[] = [];
+  const directions: number[] = [];
+  const gridSize = 8; // Reduced grid size for faster processing
+  const regionWidth = Math.floor(previousFrame.width / gridSize);
+  const regionHeight = Math.floor(previousFrame.height / gridSize);
+  const skipPixels = 2; // Skip pixels for faster processing
 
-// Motion vector calculation moved to openCVFlow.ts
+  for (let i = 0; i < gridSize * gridSize; i++) {
+    const gridX = i % gridSize;
+    const gridY = Math.floor(i / gridSize);
+    const startX = gridX * regionWidth;
+    const startY = gridY * regionHeight;
+
+    const motionVector = calculateMotionVector(
+      previousFrame,
+      currentFrame,
+      startX,
+      startY,
+      regionWidth,
+      regionHeight,
+    );
+    const velocity = Math.sqrt(
+      motionVector.x * motionVector.x + motionVector.y * motionVector.y,
+    );
+    const direction = Math.atan2(motionVector.y, motionVector.x);
+
+    const scaledVelocity = velocity * 0.05 + 0.5;
+    velocities.push(Number(scaledVelocity.toFixed(2)));
+    directions.push(Number(direction.toFixed(2)));
+  }
+
+  return { velocities, directions };
+}
+
+/**
+ * Calculate motion vector between regions of two frames
+ */
+function calculateMotionVector(
+  prevFrame: ImageData,
+  currFrame: ImageData,
+  startX: number,
+  startY: number,
+  width: number,
+  height: number,
+): { x: number; y: number } {
+  let sumDX = 0;
+  let sumDY = 0;
+  let count = 0;
+  const sampleStep = 8; // Increased sample step for faster processing
+
+  for (let y = startY; y < startY + height; y += sampleStep) {
+    for (let x = startX; x < startX + width; x += sampleStep) {
+      if (x >= prevFrame.width || y >= prevFrame.height) continue;
+
+      const idx = (y * prevFrame.width + x) * 4;
+      const prevBrightness =
+        0.299 * prevFrame.data[idx] +
+        0.587 * prevFrame.data[idx + 1] +
+        0.114 * prevFrame.data[idx + 2];
+
+      let bestMatch = { x, y, diff: Infinity };
+      const searchRadius = 6; // Optimized search radius
+      for (
+        let sy = Math.max(0, y - searchRadius);
+        sy < Math.min(currFrame.height, y + searchRadius);
+        sy += 2
+      ) {
+        for (
+          let sx = Math.max(0, x - searchRadius);
+          sx < Math.min(currFrame.width, x + searchRadius);
+          sx += 2
+        ) {
+          const searchIdx = (sy * currFrame.width + sx) * 4;
+          const currBrightness =
+            0.299 * currFrame.data[searchIdx] +
+            0.587 * currFrame.data[searchIdx + 1] +
+            0.114 * currFrame.data[searchIdx + 2];
+          const diff = Math.abs(prevBrightness - currBrightness);
+
+          if (diff < bestMatch.diff) {
+            bestMatch = { x: sx, y: sy, diff };
+          }
+        }
+      }
+
+      if (bestMatch.diff < 30) {
+        sumDX += bestMatch.x - x;
+        sumDY += bestMatch.y - y;
+        count++;
+      }
+    }
+  }
+
+  return { x: count > 0 ? sumDX / count : 0, y: count > 0 ? sumDY / count : 0 };
+}
 
 /**
  * Calculate average flow metrics across all frame pairs using enhanced Farneback flow
