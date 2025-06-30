@@ -450,7 +450,7 @@ const DatabaseManager: React.FC = () => {
                   <Card>
                     <CardContent className="p-4">
                       <div className="flex items-center gap-2 mb-2">
-                        <Sync className="h-5 w-5 text-purple-500" />
+                        <RotateCcw className="h-5 w-5 text-purple-500" />
                         <span className="font-medium">Synced</span>
                       </div>
                       <div className="text-2xl font-bold">
