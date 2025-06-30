@@ -19,6 +19,7 @@ import { toast } from "sonner";
 
 const UserProfile: React.FC = () => {
   const { user, updateProfile, logout } = useUser();
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({
     name: user?.name || "",
