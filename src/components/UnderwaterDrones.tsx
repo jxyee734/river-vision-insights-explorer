@@ -650,11 +650,21 @@ const UnderwaterDrones: React.FC = () => {
 
             <TabsContent value="missions" className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Mission Planning</h3>
-                <Button onClick={() => setMissionPlanning(!missionPlanning)}>
-                  <Settings className="h-4 w-4 mr-2" />
-                  {missionPlanning ? "Stop Planning" : "Start Planning"}
-                </Button>
+                <h3 className="text-lg font-semibold">
+                  Mission Control Center
+                </h3>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => {
+                      setIsCreatingMission(!isCreatingMission);
+                      setEditingMission(null);
+                    }}
+                    variant={isCreatingMission ? "outline" : "default"}
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    {isCreatingMission ? "Cancel" : "Create Mission"}
+                  </Button>
+                </div>
               </div>
 
               {currentMission && (
@@ -676,36 +686,338 @@ const UnderwaterDrones: React.FC = () => {
                 </Alert>
               )}
 
+              {(isCreatingMission || editingMission) && (
+                <Card className="border-blue-200 bg-blue-50">
+                  <CardHeader>
+                    <CardTitle className="text-lg">
+                      {editingMission ? "Edit Mission" : "Create New Mission"}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Mission Name *</Label>
+                        <Input
+                          value={(editingMission || newMission).name || ""}
+                          onChange={(e) => {
+                            if (editingMission) {
+                              setEditingMission({
+                                ...editingMission,
+                                name: e.target.value,
+                              });
+                            } else {
+                              setNewMission({
+                                ...newMission,
+                                name: e.target.value,
+                              });
+                            }
+                          }}
+                          placeholder="Enter mission name"
+                        />
+                      </div>
+                      <div>
+                        <Label>Priority</Label>
+                        <Select
+                          value={
+                            (editingMission || newMission).priority || "medium"
+                          }
+                          onValueChange={(value) => {
+                            if (editingMission) {
+                              setEditingMission({
+                                ...editingMission,
+                                priority: value as any,
+                              });
+                            } else {
+                              setNewMission({
+                                ...newMission,
+                                priority: value as any,
+                              });
+                            }
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">Low</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="high">High</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label>Description</Label>
+                      <Input
+                        value={(editingMission || newMission).description || ""}
+                        onChange={(e) => {
+                          if (editingMission) {
+                            setEditingMission({
+                              ...editingMission,
+                              description: e.target.value,
+                            });
+                          } else {
+                            setNewMission({
+                              ...newMission,
+                              description: e.target.value,
+                            });
+                          }
+                        }}
+                        placeholder="Enter mission description"
+                      />
+                    </div>
+
+                    <div className="border-t pt-4">
+                      <h4 className="font-semibold mb-3">Add Waypoint</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div>
+                          <Label>Latitude *</Label>
+                          <Input
+                            type="number"
+                            step="0.0001"
+                            value={newWaypoint.lat}
+                            onChange={(e) =>
+                              setNewWaypoint({
+                                ...newWaypoint,
+                                lat: parseFloat(e.target.value),
+                              })
+                            }
+                            placeholder="3.1390"
+                          />
+                        </div>
+                        <div>
+                          <Label>Longitude *</Label>
+                          <Input
+                            type="number"
+                            step="0.0001"
+                            value={newWaypoint.lng}
+                            onChange={(e) =>
+                              setNewWaypoint({
+                                ...newWaypoint,
+                                lng: parseFloat(e.target.value),
+                              })
+                            }
+                            placeholder="101.6869"
+                          />
+                        </div>
+                        <div>
+                          <Label>Depth (m) *</Label>
+                          <Input
+                            type="number"
+                            step="0.1"
+                            value={newWaypoint.depth}
+                            onChange={(e) =>
+                              setNewWaypoint({
+                                ...newWaypoint,
+                                depth: parseFloat(e.target.value),
+                              })
+                            }
+                            placeholder="3.0"
+                          />
+                        </div>
+                        <div>
+                          <Label>Duration (sec) *</Label>
+                          <Input
+                            type="number"
+                            value={newWaypoint.duration}
+                            onChange={(e) =>
+                              setNewWaypoint({
+                                ...newWaypoint,
+                                duration: parseInt(e.target.value),
+                              })
+                            }
+                            placeholder="300"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                        <div>
+                          <Label>Action</Label>
+                          <Select
+                            value={newWaypoint.action}
+                            onValueChange={(value) =>
+                              setNewWaypoint({
+                                ...newWaypoint,
+                                action: value as any,
+                              })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="sample">
+                                Water Sampling
+                              </SelectItem>
+                              <SelectItem value="record">
+                                Video Recording
+                              </SelectItem>
+                              <SelectItem value="monitor">
+                                Environmental Monitoring
+                              </SelectItem>
+                              <SelectItem value="survey">
+                                Area Survey
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>Notes</Label>
+                          <Input
+                            value={newWaypoint.notes}
+                            onChange={(e) =>
+                              setNewWaypoint({
+                                ...newWaypoint,
+                                notes: e.target.value,
+                              })
+                            }
+                            placeholder="Optional notes"
+                          />
+                        </div>
+                      </div>
+
+                      <Button onClick={addWaypointToMission} className="mt-3">
+                        <MapPin className="h-4 w-4 mr-2" />
+                        Add Waypoint
+                      </Button>
+                    </div>
+
+                    {((editingMission?.waypoints || newMission.waypoints)
+                      ?.length || 0) > 0 && (
+                      <div className="border-t pt-4">
+                        <h4 className="font-semibold mb-3">
+                          Waypoints (
+                          {(editingMission?.waypoints || newMission.waypoints)
+                            ?.length || 0}
+                          )
+                        </h4>
+                        <div className="space-y-2 max-h-40 overflow-y-auto">
+                          {(
+                            editingMission?.waypoints ||
+                            newMission.waypoints ||
+                            []
+                          ).map((waypoint, index) => (
+                            <div
+                              key={waypoint.id}
+                              className="flex items-center justify-between p-2 bg-white rounded border"
+                            >
+                              <div className="flex-1">
+                                <div className="flex items-center gap-4 text-sm">
+                                  <span className="font-medium">
+                                    #{index + 1}
+                                  </span>
+                                  <span>
+                                    {waypoint.lat.toFixed(4)},{" "}
+                                    {waypoint.lng.toFixed(4)}
+                                  </span>
+                                  <span>{waypoint.depth}m</span>
+                                  <span>{waypoint.duration}s</span>
+                                  <Badge variant="outline">
+                                    {waypoint.action}
+                                  </Badge>
+                                </div>
+                                {waypoint.notes && (
+                                  <p className="text-xs text-gray-600 mt-1">
+                                    {waypoint.notes}
+                                  </p>
+                                )}
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => removeWaypoint(waypoint.id)}
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end gap-2 pt-4 border-t">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setIsCreatingMission(false);
+                          setEditingMission(null);
+                          setNewMission({
+                            name: "",
+                            description: "",
+                            waypoints: [],
+                            priority: "medium",
+                          });
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button onClick={saveMission}>
+                        {editingMission ? "Update Mission" : "Create Mission"}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               <div className="grid gap-4">
                 {missions.map((mission) => (
                   <Card key={mission.id}>
                     <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-semibold">{mission.name}</h4>
-                          <p className="text-sm text-gray-600">
-                            {mission.waypoints.length} waypoints • Est.{" "}
-                            {Math.floor(mission.estimatedTime / 60)} min
-                          </p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <Clock className="h-4 w-4" />
-                            <span className="text-sm">
-                              {mission.waypoints
-                                .map((wp) => `${wp.depth}m`)
-                                .join(" → ")}
-                            </span>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h4 className="font-semibold">{mission.name}</h4>
+                            <Badge
+                              variant={
+                                mission.priority === "high"
+                                  ? "destructive"
+                                  : mission.priority === "medium"
+                                    ? "default"
+                                    : "secondary"
+                              }
+                            >
+                              {mission.priority}
+                            </Badge>
+                            <Badge
+                              variant={
+                                mission.status === "pending"
+                                  ? "secondary"
+                                  : "default"
+                              }
+                            >
+                              {mission.status}
+                            </Badge>
+                          </div>
+
+                          {mission.description && (
+                            <p className="text-sm text-gray-600 mb-2">
+                              {mission.description}
+                            </p>
+                          )}
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4" />
+                              <span>{mission.waypoints.length} waypoints</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-4 w-4" />
+                              <span>
+                                Est. {Math.floor(mission.estimatedTime / 60)}{" "}
+                                min
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="mt-2 text-xs text-gray-500">
+                            Created:{" "}
+                            {new Date(mission.createdAt).toLocaleDateString()}
                           </div>
                         </div>
-                        <div className="flex gap-2">
-                          <Badge
-                            variant={
-                              mission.status === "pending"
-                                ? "secondary"
-                                : "default"
-                            }
-                          >
-                            {mission.status}
-                          </Badge>
+
+                        <div className="flex flex-col gap-2 ml-4">
                           {mission.status === "pending" && (
                             <Button
                               size="sm"
@@ -715,6 +1027,32 @@ const UnderwaterDrones: React.FC = () => {
                               Start
                             </Button>
                           )}
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setEditingMission(mission);
+                                setIsCreatingMission(false);
+                              }}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => duplicateMission(mission)}
+                            >
+                              Copy
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => deleteMission(mission.id)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
