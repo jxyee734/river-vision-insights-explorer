@@ -259,6 +259,7 @@ const DatabaseManager: React.FC = () => {
       const success = await googleSheetsService.initialize({
         spreadsheetId,
         sheetName: sheetsConfig.sheetName || "River Analysis Data",
+        appsScriptUrl: sheetsConfig.appsScriptUrl,
       });
 
       if (success) {
