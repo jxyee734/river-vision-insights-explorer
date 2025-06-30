@@ -12,6 +12,16 @@ import type { AnalysisResult } from "../types/analysis";
  */
 export async function analyzeVideo(file: File): Promise<AnalysisResult> {
   console.log("Starting video analysis...");
+
+  // Wait for OpenCV.js to be ready for enhanced optical flow
+  console.log("Waiting for OpenCV.js to load...");
+  await waitForOpenCV();
+  if (isOpenCVReady()) {
+    console.log("✅ OpenCV.js is ready - using Farneback optical flow");
+  } else {
+    console.log("⚠️ OpenCV.js not available - using fallback optical flow");
+  }
+
   const video = document.createElement("video");
   video.src = URL.createObjectURL(file);
   video.muted = true;
