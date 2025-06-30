@@ -4,6 +4,9 @@ export interface VideoAnalysisRecord {
   fileSize: number;
   uploadDate: string;
   analysisDate: string;
+  videoUrl?: string;
+  thumbnailUrl?: string;
+  shareableLink?: string;
   location: {
     state: string;
     river: string;
