@@ -60,6 +60,7 @@ const DatabaseManager: React.FC = () => {
   const [sheetsConfig, setSheetsConfig] = useState({
     spreadsheetId: "",
     sheetName: "River Analysis Data",
+    appsScriptUrl: "",
     autoSync: false,
   });
   const [isConfigured, setIsConfigured] = useState(false);
