@@ -193,60 +193,40 @@ class GoogleSheetsService {
     return [headers, ...dataRows];
   }
 
-  // Real Google Sheets API integration
+  // Real Google Sheets API integration using Apps Script
   private async realGoogleSheetsSync(data: any[][]): Promise<void> {
     if (!this.config) throw new Error("Google Sheets not configured");
 
     try {
-      // Using Google Apps Script Web App as proxy to avoid CORS issues
-      // You can create a Google Apps Script with the following code:
-      /*
-        function doPost(e) {
-          const data = JSON.parse(e.postData.contents);
-          const sheet = SpreadsheetApp.openById(data.spreadsheetId).getSheetByName(data.sheetName);
-
-          if (!sheet) {
-            SpreadsheetApp.openById(data.spreadsheetId).insertSheet(data.sheetName);
-            sheet = SpreadsheetApp.openById(data.spreadsheetId).getSheetByName(data.sheetName);
-          }
-
-          // Clear existing data and add new data
-          sheet.clear();
-          if (data.values && data.values.length > 0) {
-            sheet.getRange(1, 1, data.values.length, data.values[0].length).setValues(data.values);
-          }
-
-          return ContentService.createTextOutput(JSON.stringify({success: true})).setMimeType(ContentService.MimeType.JSON);
-        }
-      */
-
-      // For now, let's use a direct approach with fetch to Google Sheets API
-      // Note: This requires CORS to be handled properly
-      const response = await fetch(
-        `https://script.google.com/macros/s/YOUR_APPS_SCRIPT_ID/exec`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            spreadsheetId: this.config.spreadsheetId,
-            sheetName: this.config.sheetName,
-            values: data,
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        // Fallback to manual CSV approach
-        console.log("Google Apps Script not available, using manual approach");
+      // Check if Apps Script URL is configured
+      if (!this.config.appsScriptUrl) {
+        console.log(
+          "Apps Script URL not configured, using manual CSV approach",
+        );
         this.createManualSheet(data);
         return;
       }
 
+      // Use Google Apps Script Web App as proxy to avoid CORS issues
+      const response = await fetch(this.config.appsScriptUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          spreadsheetId: this.config.spreadsheetId,
+          sheetName: this.config.sheetName,
+          values: data,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const result = await response.json();
       if (!result.success) {
-        throw new Error("Failed to sync with Google Sheets");
+        throw new Error(result.error || "Failed to sync with Google Sheets");
       }
 
       console.log("Successfully synced to Google Sheets:", {
@@ -254,9 +234,19 @@ class GoogleSheetsService {
         columns: data[0]?.length || 0,
         spreadsheetId: this.config.spreadsheetId,
         sheetName: this.config.sheetName,
+        rowsUpdated: result.rowsUpdated,
+        sheetUrl: result.sheetUrl,
       });
     } catch (error) {
-      console.error("Google Sheets API error:", error);
+      console.error("Google Sheets sync error:", error);
+
+      // Show user-friendly error message and fallback
+      if (error instanceof Error && error.message.includes("Failed to fetch")) {
+        alert(
+          `Unable to connect to Google Sheets. This might be due to:\n1. Incorrect Apps Script URL\n2. Apps Script not deployed as web app\n3. Network connection issues\n\nA CSV file will be downloaded instead.`,
+        );
+      }
+
       // Fallback to manual CSV generation
       this.createManualSheet(data);
     }
