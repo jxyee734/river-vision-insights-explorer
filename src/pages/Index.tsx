@@ -24,7 +24,9 @@ import DepthVisualization from "@/components/DepthVisualization";
 import { motion, AnimatePresence } from "framer-motion";
 import UnderwaterDrones from "@/components/UnderwaterDrones";
 import PollutionPredictionTab from "@/components/PollutionPredictionTab";
+import DatabaseManager from "@/components/DatabaseManager";
 import { generateStateWaterQuality } from "@/utils/stateWaterQuality";
+import { database, dbHelpers } from "@/utils/database";
 
 declare global {
   interface Window {
