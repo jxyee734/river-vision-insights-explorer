@@ -106,7 +106,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
           location: analysis.riverCategory?.state || "Unknown",
           river: analysis.riverCategory?.river || "Unknown",
           results: {
-            discharge: analysis.discharge || 0,
             velocity: analysis.averageVelocity || 0,
             trashCount: analysis.trashCount || 0,
           },
