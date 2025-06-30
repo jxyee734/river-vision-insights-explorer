@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useUser } from "../contexts/UserContext";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -13,7 +14,7 @@ import {
   SelectValue,
 } from "./ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { User, Settings, History, LogOut } from "lucide-react";
+import { User, Settings, History, LogOut, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 const UserProfile: React.FC = () => {
