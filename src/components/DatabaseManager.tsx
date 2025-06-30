@@ -688,32 +688,82 @@ const DatabaseManager: React.FC = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Alert>
+                    <Settings className="h-4 w-4" />
+                    <AlertTitle>Setup Instructions</AlertTitle>
+                    <AlertDescription>
+                      To enable automatic sync to Google Sheets, you need to
+                      deploy a Google Apps Script.
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-blue-600 hover:text-blue-800">
+                          Click for detailed setup instructions
+                        </summary>
+                        <div className="mt-2 text-sm space-y-1">
+                          <p>
+                            1. Go to{" "}
+                            <a
+                              href="https://script.google.com/"
+                              target="_blank"
+                              className="text-blue-600 underline"
+                            >
+                              script.google.com
+                            </a>
+                          </p>
+                          <p>2. Create a new project</p>
+                          <p>
+                            3. Copy the code from our GitHub repository
+                            (google-apps-script.js)
+                          </p>
+                          <p>4. Deploy as a web app with "Anyone" access</p>
+                          <p>5. Copy the deployment URL and paste it below</p>
+                        </div>
+                      </details>
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="space-y-4">
                     <div>
-                      <Label>Spreadsheet ID or URL</Label>
+                      <Label>
+                        Google Apps Script URL (Required for auto-sync)
+                      </Label>
                       <Input
-                        value={sheetsConfig.spreadsheetId}
+                        value={sheetsConfig.appsScriptUrl}
                         onChange={(e) =>
                           setSheetsConfig({
                             ...sheetsConfig,
-                            spreadsheetId: e.target.value,
+                            appsScriptUrl: e.target.value,
                           })
                         }
-                        placeholder="Enter Google Sheets URL or ID"
+                        placeholder="https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec"
                       />
                     </div>
-                    <div>
-                      <Label>Sheet Name</Label>
-                      <Input
-                        value={sheetsConfig.sheetName}
-                        onChange={(e) =>
-                          setSheetsConfig({
-                            ...sheetsConfig,
-                            sheetName: e.target.value,
-                          })
-                        }
-                        placeholder="Sheet name (e.g., 'River Analysis Data')"
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Spreadsheet ID or URL</Label>
+                        <Input
+                          value={sheetsConfig.spreadsheetId}
+                          onChange={(e) =>
+                            setSheetsConfig({
+                              ...sheetsConfig,
+                              spreadsheetId: e.target.value,
+                            })
+                          }
+                          placeholder="Enter Google Sheets URL or ID"
+                        />
+                      </div>
+                      <div>
+                        <Label>Sheet Name</Label>
+                        <Input
+                          value={sheetsConfig.sheetName}
+                          onChange={(e) =>
+                            setSheetsConfig({
+                              ...sheetsConfig,
+                              sheetName: e.target.value,
+                            })
+                          }
+                          placeholder="Sheet name (e.g., 'River Analysis Data')"
+                        />
+                      </div>
                     </div>
                   </div>
 
