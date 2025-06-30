@@ -157,6 +157,9 @@ class GoogleSheetsService {
       (record.fileSize / (1024 * 1024)).toFixed(2), // Convert to MB
       record.uploadDate,
       record.analysisDate,
+      record.videoUrl || "",
+      record.thumbnailUrl || "",
+      record.shareableLink || "",
       record.location.state,
       record.location.river,
       record.location.coordinates?.lat || "",
