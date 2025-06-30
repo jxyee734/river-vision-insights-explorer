@@ -1,5 +1,6 @@
 // Import ImageData from a web compatible type
 export interface AnalysisResult {
+  fileName?: string;
   averageVelocity: number;
   flowMagnitude: number;
   trashCount: number;
