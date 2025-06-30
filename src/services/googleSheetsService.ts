@@ -186,22 +186,97 @@ class GoogleSheetsService {
     return [headers, ...dataRows];
   }
 
-  // Simulate Google Sheets sync (replace with real API calls)
-  private async simulateGoogleSheetsSync(data: any[][]): Promise<void> {
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+  // Real Google Sheets API integration
+  private async realGoogleSheetsSync(data: any[][]): Promise<void> {
+    if (!this.config) throw new Error("Google Sheets not configured");
 
-    // Simulate potential failure (10% chance)
-    if (Math.random() < 0.1) {
-      throw new Error("Network error: Failed to sync with Google Sheets");
+    try {
+      // Using Google Apps Script Web App as proxy to avoid CORS issues
+      // You can create a Google Apps Script with the following code:
+      /*
+        function doPost(e) {
+          const data = JSON.parse(e.postData.contents);
+          const sheet = SpreadsheetApp.openById(data.spreadsheetId).getSheetByName(data.sheetName);
+
+          if (!sheet) {
+            SpreadsheetApp.openById(data.spreadsheetId).insertSheet(data.sheetName);
+            sheet = SpreadsheetApp.openById(data.spreadsheetId).getSheetByName(data.sheetName);
+          }
+
+          // Clear existing data and add new data
+          sheet.clear();
+          if (data.values && data.values.length > 0) {
+            sheet.getRange(1, 1, data.values.length, data.values[0].length).setValues(data.values);
+          }
+
+          return ContentService.createTextOutput(JSON.stringify({success: true})).setMimeType(ContentService.MimeType.JSON);
+        }
+      */
+
+      // For now, let's use a direct approach with fetch to Google Sheets API
+      // Note: This requires CORS to be handled properly
+      const response = await fetch(
+        `https://script.google.com/macros/s/YOUR_APPS_SCRIPT_ID/exec`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            spreadsheetId: this.config.spreadsheetId,
+            sheetName: this.config.sheetName,
+            values: data,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        // Fallback to manual CSV approach
+        console.log("Google Apps Script not available, using manual approach");
+        this.createManualSheet(data);
+        return;
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error("Failed to sync with Google Sheets");
+      }
+
+      console.log("Successfully synced to Google Sheets:", {
+        rows: data.length,
+        columns: data[0]?.length || 0,
+        spreadsheetId: this.config.spreadsheetId,
+        sheetName: this.config.sheetName,
+      });
+    } catch (error) {
+      console.error("Google Sheets API error:", error);
+      // Fallback to manual CSV generation
+      this.createManualSheet(data);
     }
+  }
 
-    console.log("Simulated Google Sheets sync:", {
-      rows: data.length,
-      columns: data[0]?.length || 0,
-      spreadsheetId: this.config?.spreadsheetId,
-      sheetName: this.config?.sheetName,
-    });
+  // Fallback method to create downloadable CSV
+  private createManualSheet(data: any[][]): void {
+    const csvContent = sheetsHelpers.convertToCSV(data);
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    // Create download link
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `river_analysis_data_${new Date().toISOString().split("T")[0]}.csv`;
+    link.style.display = "none";
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+
+    // Show instructions to user
+    alert(
+      `Google Sheets direct sync not available. A CSV file has been downloaded. Please:\n1. Open the downloaded CSV file\n2. Copy all data\n3. Paste into your Google Sheet: https://docs.google.com/spreadsheets/d/${this.config?.spreadsheetId}/edit`,
+    );
   }
 
   // Create a new spreadsheet template
