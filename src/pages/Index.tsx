@@ -131,6 +131,10 @@ const Index = () => {
     setShowWaterQuality(!showWaterQuality);
   };
 
+  const toggleDatabase = () => {
+    setShowDatabase(!showDatabase);
+  };
+
   // Prepare flow data for the chart
   const prepareChartData = () => {
     if (
