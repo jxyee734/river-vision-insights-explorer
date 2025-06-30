@@ -1,5 +1,9 @@
 import { extractVideoFrame, delay } from "../services/geminiService";
 import { detectTrashInImage } from "../services/roboflowService";
+import {
+  calculateEnhancedOpticalFlow,
+  initializeOpenCV,
+} from "./improvedOpenCVFlow";
 import type { AnalysisResult } from "../types/analysis";
 
 /**
