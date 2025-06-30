@@ -26,7 +26,7 @@ import {
   Wifi,
   Camera,
   Thermometer,
-  Droplet2,
+  Droplet,
   Fish,
   PlayCircle,
   PauseCircle,
