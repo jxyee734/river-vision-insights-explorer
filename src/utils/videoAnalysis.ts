@@ -359,10 +359,20 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
 // Motion vector calculation moved to openCVFlow.ts
 
 /**
- * Calculate average flow metrics across all frame pairs
+ * Calculate average flow metrics across all frame pairs using enhanced Farneback flow
  */
 function calculateAverageFlowMetrics(
-  flowVectors: Array<{ velocities: number[]; directions: number[] }>,
+  flowVectors: Array<{
+    velocities: number[];
+    directions: number[];
+    velocityField?: Array<{
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      magnitude: number;
+    }>;
+  }>,
 ): {
   averageVelocity: number;
   flowMagnitude: number;
@@ -371,15 +381,33 @@ function calculateAverageFlowMetrics(
 
   let totalVelocity = 0;
   let totalVectors = 0;
+  let totalMagnitude = 0;
+  let magnitudeCount = 0;
 
   flowVectors.forEach((vector) => {
+    // Use velocity field data if available (from Farneback)
+    if (vector.velocityField && vector.velocityField.length > 0) {
+      vector.velocityField.forEach((point) => {
+        totalMagnitude += point.magnitude;
+        magnitudeCount++;
+      });
+    }
+
+    // Also include grid-based velocities for backward compatibility
     vector.velocities.forEach((velocity) => {
       totalVelocity += velocity;
       totalVectors++;
     });
   });
 
-  const averageVelocity = totalVelocity / totalVectors;
+  // Prefer velocity field data if available, otherwise use grid velocities
+  const averageVelocity =
+    magnitudeCount > 0
+      ? totalMagnitude / magnitudeCount
+      : totalVectors > 0
+        ? totalVelocity / totalVectors
+        : 0;
+
   return {
     averageVelocity: Number(averageVelocity.toFixed(2)),
     flowMagnitude: Number((averageVelocity * 2).toFixed(2)),
