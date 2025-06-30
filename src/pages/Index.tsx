@@ -229,11 +229,13 @@ const Index = () => {
             {showWeatherAndSensor && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
                 <div
-                  className="bg-white rounded-lg shadow-lg max-w-2xl w-full p-6 overflow-auto"
-                  style={{ maxHeight: "80vh" }}
+                  className="bg-white rounded-lg shadow-lg max-w-6xl w-full p-6 overflow-auto"
+                  style={{ maxHeight: "90vh" }}
                 >
                   <WeatherTab />
-                  <SensorTab />
+                  <div className="mt-6">
+                    <UnderwaterDrones />
+                  </div>
                   <button
                     onClick={toggleWeatherAndSensor}
                     className="mt-4 w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
