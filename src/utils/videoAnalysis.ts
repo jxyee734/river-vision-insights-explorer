@@ -81,22 +81,29 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
         frameCache.set(cacheKey, frameBase64);
       }
 
-      // Skip processing if there's minimal motion
+      // Skip processing if there's minimal motion (simplified detection)
       if (previousFrameData && skipFrameCount < 2) {
         const frameData = ctx!.getImageData(0, 0, canvas.width, canvas.height);
-        const motionVector = calculateMotionVector(
-          previousFrameData,
-          frameData,
-          0,
-          0,
-          canvas.width,
-          canvas.height,
-        );
-        const motionMagnitude = Math.sqrt(
-          motionVector.x * motionVector.x + motionVector.y * motionVector.y,
-        );
 
-        if (motionMagnitude < motionThreshold) {
+        // Simple motion detection by comparing pixel differences
+        let totalDiff = 0;
+        const sampleStep = 20; // Sample every 20th pixel for performance
+        for (let i = 0; i < frameData.data.length; i += 4 * sampleStep) {
+          const r1 = previousFrameData.data[i];
+          const g1 = previousFrameData.data[i + 1];
+          const b1 = previousFrameData.data[i + 2];
+          const r2 = frameData.data[i];
+          const g2 = frameData.data[i + 1];
+          const b2 = frameData.data[i + 2];
+
+          totalDiff +=
+            Math.abs(r1 - r2) + Math.abs(g1 - g2) + Math.abs(b1 - b2);
+        }
+
+        const avgDiff = totalDiff / (frameData.data.length / (4 * sampleStep));
+
+        if (avgDiff < 10) {
+          // Low motion threshold
           skipFrameCount++;
           frameInterval = baseInterval * 1.5; // Increase interval for low motion
           continue;
