@@ -28,7 +28,7 @@ import {
   BarChart3,
   Settings,
   FileText,
-  Sync,
+  RotateCcw,
 } from "lucide-react";
 import {
   database,
