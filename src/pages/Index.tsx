@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useUser } from "../contexts/UserContext";
 import UploadSection from "@/components/UploadSection";
 import VideoPlayer from "@/components/VideoPlayer";
 import ProcessingVisualization from "@/components/ProcessingVisualization";
