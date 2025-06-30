@@ -156,25 +156,26 @@ const Index = () => {
               </p>
             </div>
           </div>
-          <div className="flex space-x-4">
+          <div className="flex items-center space-x-4">
             <button
               onClick={toggleWeatherAndSensor}
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+              className="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 text-sm"
             >
-              Toggle Weather & Sensor
+              Weather & Sensor
             </button>
             <button
               onClick={togglePollutionPrediction}
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+              className="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 text-sm"
             >
-              Toggle Pollution Prediction
+              Pollution Prediction
             </button>
             <button
               onClick={toggleWaterQuality}
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+              className="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 text-sm"
             >
-              Water Quality Index
+              Water Quality
             </button>
+            <UserProfileButton />
           </div>
         </div>
       </header>
