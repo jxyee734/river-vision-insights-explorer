@@ -16,7 +16,6 @@ export interface UserProfile {
     location: string;
     river: string;
     results: {
-      discharge: number;
       velocity: number;
       trashCount: number;
     };
