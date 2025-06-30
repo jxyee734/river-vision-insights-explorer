@@ -415,20 +415,57 @@ function calculateAverageFlowMetrics(
 }
 
 /**
- * Calculate depth profile from flow vectors
+ * Calculate depth profile from flow vectors using enhanced Farneback data
  */
 function calculateDepthProfile(
-  flowVectors: Array<{ velocities: number[]; directions: number[] }>,
+  flowVectors: Array<{
+    velocities: number[];
+    directions: number[];
+    velocityField?: Array<{
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      magnitude: number;
+    }>;
+  }>,
 ): number[] {
   const depthProfile: number[] = [];
   if (flowVectors.length === 0) return depthProfile;
 
-  for (let i = 0; i < flowVectors[0].velocities.length; i++) {
-    const avgVelocity =
-      flowVectors.reduce((sum, vector) => sum + vector.velocities[i], 0) /
-      flowVectors.length;
-    const depth = 2.5 / (avgVelocity + 0.5);
-    depthProfile.push(Number(depth.toFixed(2)));
+  // Use velocity field if available for more accurate depth estimation
+  if (flowVectors[0].velocityField && flowVectors[0].velocityField.length > 0) {
+    // Create depth estimates based on velocity field magnitudes
+    const gridSize = 8;
+    for (let i = 0; i < gridSize; i++) {
+      let totalMagnitude = 0;
+      let count = 0;
+
+      flowVectors.forEach((vector) => {
+        if (vector.velocityField) {
+          const sectionPoints = vector.velocityField.filter(
+            (_, idx) => idx % gridSize === i,
+          );
+          sectionPoints.forEach((point) => {
+            totalMagnitude += point.magnitude;
+            count++;
+          });
+        }
+      });
+
+      const avgMagnitude = count > 0 ? totalMagnitude / count : 0;
+      const depth = 2.5 / (avgMagnitude * 0.1 + 0.5); // Scale magnitude appropriately
+      depthProfile.push(Number(depth.toFixed(2)));
+    }
+  } else {
+    // Fallback to original grid-based calculation
+    for (let i = 0; i < flowVectors[0].velocities.length; i++) {
+      const avgVelocity =
+        flowVectors.reduce((sum, vector) => sum + vector.velocities[i], 0) /
+        flowVectors.length;
+      const depth = 2.5 / (avgVelocity + 0.5);
+      depthProfile.push(Number(depth.toFixed(2)));
+    }
   }
 
   return depthProfile;
