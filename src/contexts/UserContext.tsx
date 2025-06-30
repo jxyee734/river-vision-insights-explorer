@@ -28,6 +28,24 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         console.error("Failed to parse saved user:", error);
         localStorage.removeItem("river-analysis-user");
       }
+    } else {
+      // Auto-login with demo account for easier access
+      const demoUser: UserProfile = {
+        id: "demo-user",
+        name: "Demo User",
+        email: "demo@riveranalysis.com",
+        preferences: {
+          opticalFlowMethod: "lucas-kanade",
+          defaultRegion: "Malaysia",
+          notifications: true,
+          autoSave: true,
+        },
+        analysisHistory: [],
+        created: Date.now(),
+        lastLogin: Date.now(),
+      };
+      setUser(demoUser);
+      localStorage.setItem("river-analysis-user", JSON.stringify(demoUser));
     }
     setIsLoading(false);
   }, []);
