@@ -271,10 +271,6 @@ const UserProfile: React.FC = () => {
                         <div className="text-right">
                           <div className="text-sm">
                             <p>
-                              Discharge: {analysis.results.discharge.toFixed(2)}{" "}
-                              m³/s
-                            </p>
-                            <p>
                               Velocity: {analysis.results.velocity.toFixed(2)}{" "}
                               m/s
                             </p>
