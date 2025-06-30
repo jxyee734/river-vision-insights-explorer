@@ -7,17 +7,7 @@ export interface AnalysisResult {
   environmentalImpact: string;
   frames: ImageData[];
   trashDetectionImages: string[]; // We'll keep this for backward compatibility
-  flowVectors: Array<{
-    velocities: number[];
-    directions: number[];
-    velocityField?: Array<{
-      x: number;
-      y: number;
-      vx: number;
-      vy: number;
-      magnitude: number;
-    }>;
-  }>;
+  flowVectors: Array<{ velocities: number[]; directions: number[] }>;
   processedVideoUrl?: string; // URL for the processed video with annotations
   downloadUrl?: string; // URL for downloading the processed video
   videoUrl?: string; // URL to the processed video
