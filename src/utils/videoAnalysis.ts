@@ -114,26 +114,8 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
         frames.push(frameData);
 
         if (previousFrameData) {
-          // Use Farneback optical flow with ROI for better accuracy
-          const roi = { x: 0, y: 20, width: 100, height: 60 }; // Focus on water area
-          const flowResult = calculateFarnebackOpticalFlow(
-            previousFrameData,
-            frameData,
-            roi,
-          );
+          const flowResult = calculateOpticalFlow(previousFrameData, frameData);
           flowVectors.push(flowResult);
-
-          // Log enhanced flow information
-          if (flowResult.velocityField && flowResult.velocityField.length > 0) {
-            const avgMagnitude =
-              flowResult.velocityField.reduce(
-                (sum, p) => sum + p.magnitude,
-                0,
-              ) / flowResult.velocityField.length;
-            console.log(
-              `Farneback flow: ${flowResult.velocityField.length} vectors, avg magnitude: ${avgMagnitude.toFixed(2)}`,
-            );
-          }
         }
         previousFrameData = frameData;
 
