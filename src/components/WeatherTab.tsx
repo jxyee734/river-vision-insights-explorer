@@ -455,6 +455,15 @@ const WeatherTab: React.FC = () => {
                   </p>
                 </div>
               </div>
+              <div className="mt-3 text-xs text-blue-700 border-t border-blue-200 pt-2">
+                <span className="font-medium">Data Source:</span> Open-Meteo API
+                (Open Source Weather Data)
+                {weather.location.name === "River Location" && (
+                  <span className="ml-2 text-blue-600">
+                    • Using simulated data due to API limitations
+                  </span>
+                )}
+              </div>
             </div>
           </TabsContent>
         </Tabs>
