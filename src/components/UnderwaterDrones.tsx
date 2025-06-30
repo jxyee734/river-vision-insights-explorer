@@ -296,6 +296,165 @@ const UnderwaterDrones: React.FC = () => {
     }
   };
 
+  // Mission planning functions
+  const addWaypointToMission = () => {
+    if (
+      !newWaypoint.lat ||
+      !newWaypoint.lng ||
+      !newWaypoint.depth ||
+      !newWaypoint.duration
+    ) {
+      toast({
+        title: "Invalid Waypoint",
+        description: "Please fill in all required waypoint fields.",
+      });
+      return;
+    }
+
+    const waypoint: Waypoint = {
+      id: `wp-${Date.now()}`,
+      lat: newWaypoint.lat!,
+      lng: newWaypoint.lng!,
+      depth: newWaypoint.depth!,
+      duration: newWaypoint.duration!,
+      action: newWaypoint.action || "sample",
+      notes: newWaypoint.notes || "",
+    };
+
+    if (editingMission) {
+      setEditingMission({
+        ...editingMission,
+        waypoints: [...editingMission.waypoints, waypoint],
+      });
+    } else {
+      setNewMission({
+        ...newMission,
+        waypoints: [...(newMission.waypoints || []), waypoint],
+      });
+    }
+
+    // Reset waypoint form
+    setNewWaypoint({
+      lat: 3.139,
+      lng: 101.6869,
+      depth: 3,
+      duration: 300,
+      action: "sample",
+      notes: "",
+    });
+
+    toast({
+      title: "Waypoint Added",
+      description: `Waypoint at ${waypoint.lat.toFixed(4)}, ${waypoint.lng.toFixed(4)} added successfully.`,
+    });
+  };
+
+  const removeWaypoint = (waypointId: string) => {
+    if (editingMission) {
+      setEditingMission({
+        ...editingMission,
+        waypoints: editingMission.waypoints.filter(
+          (wp) => wp.id !== waypointId,
+        ),
+      });
+    } else {
+      setNewMission({
+        ...newMission,
+        waypoints: (newMission.waypoints || []).filter(
+          (wp) => wp.id !== waypointId,
+        ),
+      });
+    }
+  };
+
+  const saveMission = () => {
+    const missionToSave = editingMission || newMission;
+
+    if (
+      !missionToSave.name ||
+      !missionToSave.waypoints ||
+      missionToSave.waypoints.length === 0
+    ) {
+      toast({
+        title: "Invalid Mission",
+        description: "Mission must have a name and at least one waypoint.",
+      });
+      return;
+    }
+
+    const totalTime = missionToSave.waypoints.reduce(
+      (sum, wp) => sum + wp.duration,
+      0,
+    );
+
+    const mission: Mission = {
+      id: editingMission ? editingMission.id : `mission-${Date.now()}`,
+      name: missionToSave.name!,
+      description: missionToSave.description || "",
+      waypoints: missionToSave.waypoints,
+      status: "pending",
+      progress: 0,
+      estimatedTime: totalTime,
+      createdAt: editingMission
+        ? editingMission.createdAt
+        : new Date().toISOString(),
+      priority: missionToSave.priority || "medium",
+    };
+
+    if (editingMission) {
+      setMissions((prev) =>
+        prev.map((m) => (m.id === mission.id ? mission : m)),
+      );
+      setEditingMission(null);
+      toast({
+        title: "Mission Updated",
+        description: `Mission "${mission.name}" has been updated successfully.`,
+      });
+    } else {
+      setMissions((prev) => [...prev, mission]);
+      setNewMission({
+        name: "",
+        description: "",
+        waypoints: [],
+        priority: "medium",
+      });
+      setIsCreatingMission(false);
+      toast({
+        title: "Mission Created",
+        description: `Mission "${mission.name}" has been created successfully.`,
+      });
+    }
+  };
+
+  const deleteMission = (missionId: string) => {
+    setMissions((prev) => prev.filter((m) => m.id !== missionId));
+    toast({
+      title: "Mission Deleted",
+      description: "Mission has been deleted successfully.",
+    });
+  };
+
+  const duplicateMission = (mission: Mission) => {
+    const duplicated: Mission = {
+      ...mission,
+      id: `mission-${Date.now()}`,
+      name: `${mission.name} (Copy)`,
+      status: "pending",
+      progress: 0,
+      createdAt: new Date().toISOString(),
+      waypoints: mission.waypoints.map((wp) => ({
+        ...wp,
+        id: `wp-${Date.now()}-${Math.random()}`,
+      })),
+    };
+
+    setMissions((prev) => [...prev, duplicated]);
+    toast({
+      title: "Mission Duplicated",
+      description: `Mission "${duplicated.name}" has been created.`,
+    });
+  };
+
   const currentDrone = drones.find((d) => d.id === selectedDrone);
   const latestSensorReading = sensorData[sensorData.length - 1];
 
