@@ -354,49 +354,7 @@ export async function analyzeVideo(file: File): Promise<AnalysisResult> {
   }
 }
 
-/**
- * Calculate optical flow between two frames
- */
-function calculateOpticalFlow(
-  previousFrame: ImageData,
-  currentFrame: ImageData,
-): {
-  velocities: number[];
-  directions: number[];
-} {
-  const velocities: number[] = [];
-  const directions: number[] = [];
-  const gridSize = 8; // Reduced grid size for faster processing
-  const regionWidth = Math.floor(previousFrame.width / gridSize);
-  const regionHeight = Math.floor(previousFrame.height / gridSize);
-  const skipPixels = 2; // Skip pixels for faster processing
-
-  for (let i = 0; i < gridSize * gridSize; i++) {
-    const gridX = i % gridSize;
-    const gridY = Math.floor(i / gridSize);
-    const startX = gridX * regionWidth;
-    const startY = gridY * regionHeight;
-
-    const motionVector = calculateMotionVector(
-      previousFrame,
-      currentFrame,
-      startX,
-      startY,
-      regionWidth,
-      regionHeight,
-    );
-    const velocity = Math.sqrt(
-      motionVector.x * motionVector.x + motionVector.y * motionVector.y,
-    );
-    const direction = Math.atan2(motionVector.y, motionVector.x);
-
-    const scaledVelocity = velocity * 0.05 + 0.5;
-    velocities.push(Number(scaledVelocity.toFixed(2)));
-    directions.push(Number(direction.toFixed(2)));
-  }
-
-  return { velocities, directions };
-}
+// Optical flow calculation moved to openCVFlow.ts for Farneback implementation
 
 /**
  * Calculate motion vector between regions of two frames
