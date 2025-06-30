@@ -97,13 +97,41 @@ const Index = () => {
       result.fileName = file.name;
       setAnalysisResult(result);
 
-      // Save to database
+      // Upload video and generate shareable link
+      let videoUploadResult = null;
+      try {
+        toast.info("Uploading video and generating shareable link...");
+        videoUploadResult = await videoUploadService.uploadVideo(
+          file,
+          `analysis_${Date.now()}`,
+        );
+
+        if (videoUploadResult.success) {
+          toast.success("Video uploaded successfully! Link generated.");
+          console.log("Video uploaded:", videoUploadResult.videoUrl);
+        } else {
+          toast.warning(
+            "Video upload failed, but analysis data will still be saved.",
+          );
+          console.error("Video upload failed:", videoUploadResult.error);
+        }
+      } catch (uploadError) {
+        console.error("Video upload error:", uploadError);
+        toast.warning(
+          "Video upload failed, but analysis data will still be saved.",
+        );
+      }
+
+      // Save to database with video URLs
       try {
         const dbRecord = dbHelpers.createRecordFromAnalysis(
           result,
           file,
           { state: location, river: river },
           {
+            videoUrl: videoUploadResult?.videoUrl,
+            thumbnailUrl: videoUploadResult?.thumbnailUrl,
+            shareableLink: videoUploadResult?.videoUrl,
             processingMetrics: {
               framesProcessed: result.frames?.length || 0,
               processingTime: 0, // Will be updated with actual time
@@ -116,13 +144,20 @@ const Index = () => {
               location.toLowerCase(),
               river.toLowerCase(),
             ],
-            notes: `Automated analysis of ${file.name}`,
+            notes: `Automated analysis of ${file.name}${videoUploadResult?.success ? " - Video link available" : ""}`,
           },
         );
-        database.saveRecord(dbRecord);
-        console.log("Analysis saved to database");
+        const savedRecord = database.saveRecord(dbRecord);
+        console.log("Analysis saved to database with ID:", savedRecord.id);
+
+        if (videoUploadResult?.success) {
+          toast.success(
+            `Analysis complete! Video link: ${videoUploadResult.videoUrl}`,
+          );
+        }
       } catch (error) {
         console.error("Failed to save analysis to database:", error);
+        toast.error("Failed to save analysis data to database");
       }
 
       // Auto-save analysis if enabled
