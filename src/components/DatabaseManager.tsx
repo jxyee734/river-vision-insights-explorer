@@ -564,7 +564,7 @@ const DatabaseManager: React.FC = () => {
                         Delete ({selectedRecords.size})
                       </Button>
                       <Button variant="outline" onClick={syncToGoogleSheets}>
-                        <Sync className="h-4 w-4 mr-2" />
+                        <RotateCcw className="h-4 w-4 mr-2" />
                         Sync Selected
                       </Button>
                     </>
