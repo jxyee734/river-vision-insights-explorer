@@ -69,10 +69,12 @@ const Index = () => {
       // Show different messages based on whether trash detection worked
       if (result.environmentalImpact?.includes("unavailable")) {
         toast.warning(
-          "Video analysis complete! Trash detection was unavailable due to external service issues, but flow analysis succeeded.",
+          "Video analysis complete! Trash detection was unavailable due to external service issues, but enhanced Farneback optical flow analysis succeeded.",
         );
       } else {
-        toast.success("Video analysis complete!");
+        toast.success(
+          "Video analysis complete with enhanced Farneback optical flow!",
+        );
       }
     } catch (error) {
       console.error("Error processing video:", error);
