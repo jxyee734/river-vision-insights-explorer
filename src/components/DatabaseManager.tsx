@@ -103,6 +103,7 @@ const DatabaseManager: React.FC = () => {
       setSheetsConfig({
         spreadsheetId: config.spreadsheetId,
         sheetName: config.sheetName,
+        appsScriptUrl: config.appsScriptUrl || "",
         autoSync: false,
       });
       setIsConfigured(true);
