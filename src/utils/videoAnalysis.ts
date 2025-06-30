@@ -137,8 +137,26 @@ export async function analyzeVideo(
         frames.push(frameData);
 
         if (previousFrameData) {
-          const flowResult = calculateOpticalFlow(previousFrameData, frameData);
+          const roi = { x: 0, y: 20, width: 100, height: 60 }; // Focus on water area
+          const flowResult = await calculateEnhancedOpticalFlow(
+            previousFrameData,
+            frameData,
+            opticalFlowMethod,
+            roi,
+          );
           flowVectors.push(flowResult);
+
+          // Log flow information
+          if (flowResult.velocityField && flowResult.velocityField.length > 0) {
+            const avgMagnitude =
+              flowResult.velocityField.reduce(
+                (sum, p) => sum + p.magnitude,
+                0,
+              ) / flowResult.velocityField.length;
+            console.log(
+              `${flowResult.method} flow: ${flowResult.velocityField.length} vectors, avg magnitude: ${avgMagnitude.toFixed(2)}`,
+            );
+          }
         }
         previousFrameData = frameData;
 
