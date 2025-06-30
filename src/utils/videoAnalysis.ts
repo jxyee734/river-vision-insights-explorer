@@ -9,8 +9,27 @@ import type { AnalysisResult } from "../types/analysis";
 /**
  * Process a video file and analyze its content using Roboflow for trash detection
  */
-export async function analyzeVideo(file: File): Promise<AnalysisResult> {
-  console.log("Starting video analysis...");
+export async function analyzeVideo(
+  file: File,
+  opticalFlowMethod: "lucas-kanade" | "farneback" = "lucas-kanade",
+): Promise<AnalysisResult> {
+  console.log(
+    `Starting video analysis with ${opticalFlowMethod} optical flow...`,
+  );
+
+  // Initialize OpenCV if using Farneback
+  if (opticalFlowMethod === "farneback") {
+    console.log("Initializing OpenCV.js for Farneback optical flow...");
+    const opencvReady = await initializeOpenCV();
+    if (opencvReady) {
+      console.log("✅ OpenCV.js ready for Farneback optical flow");
+    } else {
+      console.log(
+        "⚠️ OpenCV.js failed to initialize, falling back to Lucas-Kanade",
+      );
+      opticalFlowMethod = "lucas-kanade";
+    }
+  }
   const video = document.createElement("video");
   video.src = URL.createObjectURL(file);
   video.muted = true;
