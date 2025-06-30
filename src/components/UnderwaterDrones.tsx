@@ -267,7 +267,7 @@ const UnderwaterDrones: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Submarine className="h-6 w-6 text-blue-600" />
+            <Ship className="h-6 w-6 text-blue-600" />
             Underwater Drones Control Center
           </CardTitle>
           <CardDescription>
